@@ -69,7 +69,8 @@ ul{list-style:none;margin:0;padding:0}
 .status{margin:10px 0 0;color:var(--mute);font-size:.72rem;text-align:center}
 .err{color:var(--sell)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-.row.single{grid-template-columns:1fr}
+.row.single{grid-template-columns:1fr;margin-bottom:8px}
+.row.single .prices{grid-template-columns:1fr}
 </style>
 </head>
 <body>
@@ -78,10 +79,9 @@ ul{list-style:none;margin:0;padding:0}
 
   <div class="row single" aria-live="polite">
     <div class="pair">
-      <h2>ARS/BOB · implícito</h2>
+      <h2>ARS/BOB · IMPLÍCITO</h2>
       <div class="prices">
-        <button class="c buy" type="button" aria-label="Compra de ARS en bolivianos"><b id="p-ARSBOB-BUY">—</b></button>
-        <button class="c sell" type="button" aria-label="Venta de ARS en bolivianos"><b id="p-ARSBOB-SELL">—</b></button>
+        <div class="c buy" role="group" aria-label="Cotización implícita: venta de USDT en BOB dividida por compra de USDT en ARS"><b id="p-ARSBOB-BUY">—</b></div>
       </div>
     </div>
   </div>
@@ -123,7 +123,7 @@ const PAIRS = [["ARS", "BUY"], ["ARS", "SELL"], ["BOB", "BUY"], ["BOB", "SELL"]]
 const ROWS = 10;
 const state = {};
 let selected = null, loading = false, again = false;
-const cells = [...document.querySelectorAll(".c")];
+const cells = [...document.querySelectorAll(".c[data-key]")];
 
 async function getAds(fiat, tradeType, rows) {
   const ctrl = new AbortController();
@@ -222,42 +222,37 @@ setInterval(() => { if (!document.hidden) load(); }, 15000); // no consulta con 
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 </script>
 <script>
-(function () { // agregado: fila ARS/BOB implícita + selección manual de órdenes (el script original no se modifica)
-  const fmt5 = (n) => n.toLocaleString("es-AR", { minimumFractionDigits: 5, maximumFractionDigits: 5 });
+(function () { // cotización implícita + selección manual de órdenes
+  const fmt6 = (n) => n.toLocaleString("es-AR", { minimumFractionDigits: 6, maximumFractionDigits: 6 });
   const override = {}; // precio manual elegido por celda: "ARS-BUY" -> precio
   let suppress = false;
 
   const eff = (key) => override[key] || (state[key] && state[key][0] && state[key][0].price) || null;
 
-  function renderCell(key) { // pinta celda con el precio vigente (manual o mejor) y marca con ●
+  function renderCell(key) { // pinta la celda con el precio vigente (manual o mejor), con ● si es manual
     const v = eff(key);
-    const sym = SYMBOL[key.slice(0, 3)];
     $("p-" + key).innerHTML = v
-      ? `<i>${sym}</i>${fmt(v)}${override[key] ? '<span style="font-size:.45em;opacity:.85"> ●</span>' : ""}`
+      ? `<i>${SYMBOL[key.slice(0, 3)]}</i>${fmt(v)}${override[key] ? '<span style="font-size:.45em;opacity:.85"> ●</span>' : ""}`
       : "—";
   }
 
-  const _paint = paint; // envuelve paint para respetar la selección manual tras cada actualización
+  function update() { // implícita = venta de USDT en BOB ÷ compra de USDT en ARS (Bs por cada ARS)
+    const bobSell = eff("BOB-SELL"), arsBuy = eff("ARS-BUY");
+    $("p-ARSBOB-BUY").innerHTML = bobSell && arsBuy ? `<i>Bs</i>${fmt6(bobSell / arsBuy)}` : "—";
+  }
+
+  const _paint = paint; // respeta la selección manual y recalcula la implícita tras cada actualización
   paint = function (key) {
     _paint(key);
     if (override[key]) renderCell(key);
+    update();
   };
 
-  function update() { // fila ARS/BOB con precios vigentes
-    const arsBuy = eff("ARS-BUY"), arsSell = eff("ARS-SELL");
-    const bobBuy = eff("BOB-BUY"), bobSell = eff("BOB-SELL");
-    const elB = $("p-ARSBOB-BUY"), elS = $("p-ARSBOB-SELL");
-    if (!elB || !elS) return;
-    elB.innerHTML = (bobSell && arsSell) ? `<i>Bs</i>${fmt5(bobSell / arsSell)}` : "—";
-    elS.innerHTML = (bobBuy && arsBuy) ? `<i>Bs</i>${fmt5(bobBuy / arsBuy)}` : "—";
-  }
-
-  // tap sobre una orden del panel: la elige como precio (mismo tap = volver al mejor precio)
+  // tap sobre una orden del listado: la elige como precio (mismo tap = volver al mejor precio)
   $("dl").addEventListener("click", (e) => {
     const li = e.target.closest("li.o");
     if (!li || !selected) return;
-    const idx = [...li.parentNode.children].indexOf(li);
-    const ad = state[selected] && state[selected][idx];
+    const ad = state[selected] && state[selected][[...li.parentNode.children].indexOf(li)];
     if (!ad) return;
     if (override[selected] === ad.price) delete override[selected];
     else override[selected] = ad.price;
@@ -265,27 +260,26 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
     update();
   });
 
-  // long-press (500 ms) sobre un precio grande: reinicia a mejor precio
+  // pulsación larga (500 ms) sobre un precio: vuelve al mejor precio
   cells.forEach((btn) => {
     let t;
     btn.addEventListener("pointerdown", () => {
+      suppress = false;
       t = setTimeout(() => {
         suppress = true;
         if (override[btn.dataset.key]) {
           delete override[btn.dataset.key];
           paint(btn.dataset.key);
-          update();
         }
       }, 500);
     });
-    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) =>
-      btn.addEventListener(ev, () => clearTimeout(t)));
+    btn.addEventListener("pointerup", () => clearTimeout(t));
+    ["pointerleave", "pointercancel"].forEach((ev) => btn.addEventListener(ev, () => { clearTimeout(t); suppress = false; }));
   });
-  document.addEventListener("click", (e) => { // evita que el long-press dispare el toggle del panel
+  document.addEventListener("click", (e) => { // evita que la pulsación larga también abra o cierre el listado
     if (suppress) { e.stopPropagation(); e.preventDefault(); suppress = false; }
   }, true);
 
-  setInterval(update, 500);
   update();
 })();
 </script>
