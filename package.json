@@ -1,0 +1,12 @@
+{
+  "name": "p2p-ars",
+  "version": "1.0.0",
+  "description": "Consulta de órdenes P2P de Binance ARS",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
