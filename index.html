@@ -92,6 +92,9 @@ tr:first-child td{background:color-mix(in srgb,var(--line) 40%,transparent)}
 <script>
 const $ = (id) => document.getElementById(id);
 const fmt = (n, d = 2) => n.toLocaleString("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const API_BASE = window.location.hostname.endsWith("github.io") || window.location.protocol === "file:"
+  ? "https://p2p-ars.onrender.com"
+  : "";
 
 function params(tradeType) {
   const p = new URLSearchParams({ tradeType, rows: $("rows").value });
@@ -118,7 +121,7 @@ async function load() {
   $("status").textContent = "Actualizando…";
   try {
     const [buy, sell] = await Promise.all(["BUY", "SELL"].map(async (t) => {
-      const r = await fetch("/api/ads?" + params(t));
+      const r = await fetch(API_BASE + "/api/ads?" + params(t));
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Error al consultar");
       return j;

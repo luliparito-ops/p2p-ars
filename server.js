@@ -51,6 +51,16 @@ async function getAds({ tradeType, amount, payType, merchants, rows }) {
 http
   .createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    };
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, corsHeaders);
+      res.end();
+      return;
+    }
     if (url.pathname === "/api/ads") {
       try {
         const q = url.searchParams;
@@ -61,10 +71,10 @@ http
           merchants: q.get("merchants") === "1",
           rows: Math.min(Number(q.get("rows")) || 10, 20),
         });
-        res.writeHead(200, { "Content-Type": "application/json" });
+        res.writeHead(200, { "Content-Type": "application/json", ...corsHeaders });
         res.end(JSON.stringify(data));
       } catch (e) {
-        res.writeHead(502, { "Content-Type": "application/json" });
+        res.writeHead(502, { "Content-Type": "application/json", ...corsHeaders });
         res.end(JSON.stringify({ error: e.message }));
       }
       return;
