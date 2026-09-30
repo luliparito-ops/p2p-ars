@@ -69,6 +69,8 @@ ul{list-style:none;margin:0;padding:0}
 .status{margin:10px 0 0;color:var(--mute);font-size:.72rem;text-align:center}
 .err{color:var(--sell)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.row.single{grid-template-columns:1fr}
+
 </style>
 </head>
 <body>
@@ -88,6 +90,16 @@ ul{list-style:none;margin:0;padding:0}
       <div class="prices">
         <button class="c buy" data-key="BOB-BUY" aria-expanded="false" aria-controls="panel" aria-label="USDT/BOB comprar, ver órdenes"><b id="p-BOB-BUY">—</b></button>
         <button class="c sell" data-key="BOB-SELL" aria-expanded="false" aria-controls="panel" aria-label="USDT/BOB vender, ver órdenes"><b id="p-BOB-SELL">—</b></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row single" aria-live="polite">
+    <div class="pair">
+      <h2>ARS/BOB · implícito</h2>
+      <div class="prices">
+        <button class="c buy" type="button" aria-label="ARS/BOB compra implícita"><b id="p-ARSBOB-BUY">—</b></button>
+        <button class="c sell" type="button" aria-label="ARS/BOB venta implícita"><b id="p-ARSBOB-SELL">—</b></button>
       </div>
     </div>
   </div>
@@ -210,6 +222,21 @@ load();
 setInterval(() => { if (!document.hidden) load(); }, 15000); // no consulta con la pestaña oculta
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 </script>
+<script>
+(function () { // cotización implícita ARS/BOB: usa el estado que carga el script original, sin modificarlo
+  const fmt2 = (n) => n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const price = (key) => (state[key] && state[key][0] && state[key][0].price) || null;
+  function update() {
+    const arsBuy = price("ARS-BUY"), arsSell = price("ARS-SELL");
+    const bobBuy = price("BOB-BUY"), bobSell = price("BOB-SELL");
+    const elB = $("p-ARSBOB-BUY"), elS = $("p-ARSBOB-SELL");
+    if (!elB || !elS) return;
+    elB.innerHTML = (arsBuy && bobSell) ? `<i>$</i>${fmt2(arsBuy / bobSell)}` : "—";
+    elS.innerHTML = (arsSell && bobBuy) ? `<i>$</i>${fmt2(arsSell / bobBuy)}` : "—";
+  }
+  setInterval(update, 500);
+  update();
+})();
+</script>
 </body>
 </html>
-
