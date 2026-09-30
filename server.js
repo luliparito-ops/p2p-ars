@@ -5,15 +5,13 @@ const path = require("path");
 
 const PORT = process.env.PORT || 3000;
 const BINANCE = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search";
-const cache = new Map(); // evita saturar a Binance: 3 s de caché por consulta
+const FIATS = ["ARS", "BOB"];
+const TTL = 3000; // caché de 3 s por consulta, para no saturar a Binance
+const cache = new Map(); // key -> { t, promise }
 
-async function getAds({ tradeType, amount, payType, merchants, rows }) {
-  const key = [tradeType, amount, payType, merchants, rows].join("|");
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.t < 3000) return hit.data;
-
+async function fetchAds({ fiat, tradeType, amount, payType, merchants, rows }) {
   const body = {
-    fiat: "ARS",
+    fiat,
     asset: "USDT",
     tradeType, // BUY = vos comprás USDT (anuncios de venta) | SELL = vos vendés USDT
     page: 1,
@@ -30,10 +28,14 @@ async function getAds({ tradeType, amount, payType, merchants, rows }) {
     method: "POST",
     headers: { "Content-Type": "application/json", "User-Agent": "Mozilla/5.0" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) throw new Error("Binance respondió " + res.status);
   const json = await res.json();
-  const data = (json.data || []).map(({ adv, advertiser }) => ({
+  if (json.code && json.code !== "000000") {
+    throw new Error(json.message || "Binance devolvió el código " + json.code);
+  }
+  return (json.data || []).map(({ adv, advertiser }) => ({
     price: Number(adv.price),
     available: Number(adv.tradableQuantity),
     min: Number(adv.minSingleTransAmount),
@@ -44,8 +46,23 @@ async function getAds({ tradeType, amount, payType, merchants, rows }) {
     rate: advertiser.monthFinishRate,
     merchant: advertiser.userType === "merchant",
   }));
-  cache.set(key, { t: Date.now(), data });
-  return data;
+}
+
+// Cachea la promesa: consultas idénticas simultáneas comparten una sola llamada a Binance.
+function getAds(params) {
+  const key = [params.fiat, params.tradeType, params.amount, params.payType, params.merchants, params.rows].join("|");
+  const now = Date.now();
+  const hit = cache.get(key);
+  if (hit && now - hit.t < TTL) return hit.promise;
+
+  for (const [k, v] of cache) if (now - v.t >= TTL) cache.delete(k); // evita que el caché crezca sin límite
+
+  const promise = fetchAds(params).catch((e) => {
+    if (cache.get(key)?.promise === promise) cache.delete(key); // no cachear errores
+    throw e;
+  });
+  cache.set(key, { t: now, promise });
+  return promise;
 }
 
 http
@@ -62,25 +79,37 @@ http
       return;
     }
     if (url.pathname === "/api/ads") {
+      const json = { "Content-Type": "application/json", ...corsHeaders };
       try {
         const q = url.searchParams;
+        const fiat = (q.get("fiat") || "ARS").toUpperCase();
+        if (!FIATS.includes(fiat)) {
+          res.writeHead(400, json);
+          res.end(JSON.stringify({ error: "Moneda no soportada: " + fiat }));
+          return;
+        }
         const data = await getAds({
+          fiat,
           tradeType: q.get("tradeType") === "SELL" ? "SELL" : "BUY",
           amount: (q.get("amount") || "").replace(/[^\d.]/g, ""),
           payType: (q.get("payType") || "").replace(/[^\w]/g, ""),
           merchants: q.get("merchants") === "1",
           rows: Math.min(Number(q.get("rows")) || 10, 20),
         });
-        res.writeHead(200, { "Content-Type": "application/json", ...corsHeaders });
+        res.writeHead(200, json);
         res.end(JSON.stringify(data));
       } catch (e) {
-        res.writeHead(502, { "Content-Type": "application/json", ...corsHeaders });
-        res.end(JSON.stringify({ error: e.message }));
+        res.writeHead(502, json);
+        res.end(JSON.stringify({ error: e.name === "TimeoutError" ? "Binance tardó demasiado en responder" : e.message }));
       }
       return;
     }
     fs.readFile(path.join(__dirname, "index.html"), (err, html) => {
-      if (err) return res.writeHead(500).end("Falta index.html");
+      if (err) {
+        res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Falta index.html");
+        return;
+      }
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(html);
     });
