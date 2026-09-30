@@ -6,49 +6,84 @@
 <title>USDT · ARS y BOB · P2P</title>
 <style>
 :root{
-  --bg:#f3f5f2; --panel:#fff; --ink:#15201a; --mute:#66736b; --line:#dfe5e0;
+  --bg:#eef1ee; --panel:#fff; --ink:#131c17; --mute:#6b786f; --line:#e0e6e1;
   --buy:#0f7a4d; --sell:#b4382c;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){--bg:#0f1512;--panel:#17201b;--ink:#e8efe9;--mute:#8a9a90;--line:#26332c;--buy:#3fd08c;--sell:#ff7a6b;color-scheme:dark}
+  :root:not([data-theme="light"]){--bg:#0d1310;--panel:#161f1a;--ink:#e9f0ea;--mute:#8a9a90;--line:#26332c;--buy:#3fd08c;--sell:#ff7a6b;color-scheme:dark}
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
-main{max-width:1100px;margin:0 auto;padding:24px 12px 48px}
-h1{font-size:1.15rem;margin:0 0 14px;font-weight:600}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.pair{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.pair h2{margin:0;padding:10px 14px;font-size:.95rem;font-weight:600;border-bottom:1px solid var(--line)}
-.prices{display:grid;grid-template-columns:1fr 1fr}
-.prices div{padding:12px 14px}
-.prices div+div{border-left:1px solid var(--line)}
-small{display:block;color:var(--mute);font-size:.78rem}
-b{display:block;font-size:clamp(1.05rem,4.5vw,1.9rem);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
-.buy b{color:var(--buy)} .sell b{color:var(--sell)}
-.status{margin-top:12px;color:var(--mute);font-size:.82rem}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 "Segoe UI",system-ui,sans-serif}
+main{width:100%;padding:8px 8px 24px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.buy{--c:var(--buy)} .sell{--c:var(--sell)}
+.buy,.sell{--t:color-mix(in srgb,var(--c) 5%,var(--panel));--edge:color-mix(in srgb,var(--c) 45%,var(--line))}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pair{background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;
+  box-shadow:0 1px 2px rgb(0 0 0/.05),0 10px 22px -16px rgb(0 0 0/.3)}
+.pair h2{margin:0;padding:3px 10px 2px;line-height:1.1;font-size:.66rem;font-weight:600;color:var(--mute);letter-spacing:.1em}
+.prices{display:grid;grid-template-columns:1fr 1fr;padding:1px;gap:1px}
+.c{position:relative;font:inherit;color:inherit;margin:0;padding:11px 2px;border:0;border-radius:5px;text-align:center;min-width:0;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  background:color-mix(in srgb,var(--c) 7%,transparent);transition:background .2s,box-shadow .2s}
+.c:active{background:color-mix(in srgb,var(--c) 16%,transparent)}
+.c[aria-expanded="true"]{background:color-mix(in srgb,var(--c) 16%,var(--panel));box-shadow:inset 0 0 0 1px var(--edge)}
+.c b{display:block;color:var(--c);font-size:clamp(.9rem,3.9vw,2.6rem);font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.c b i{font-style:normal;font-size:.6em;font-weight:600;opacity:.7;margin-right:.15em}
+:focus-visible{outline:2px solid var(--c,var(--buy));outline-offset:-2px}
+
+.panel{--x:50%;position:relative;display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.3,.7,.2,1)}
+.panel.open{grid-template-rows:1fr}
+.panel .clip{min-height:0;overflow:hidden;padding:0 2px 14px;margin:0 -2px -14px}
+.card{margin-top:10px;border:1px solid var(--edge);border-radius:6px;overflow:hidden;background:var(--t);
+  box-shadow:0 1px 2px rgb(0 0 0/.05),0 12px 24px -14px color-mix(in srgb,var(--c) 75%,transparent);
+  opacity:0;transform:scale(.94);transform-origin:var(--x) 0;transition:opacity .25s,transform .3s cubic-bezier(.3,.7,.2,1)}
+.panel.open .card{opacity:1;transform:none}
+.caret{position:absolute;top:4px;left:var(--x);width:12px;height:12px;margin-left:-6px;transform:rotate(45deg);z-index:1;pointer-events:none;
+  background:var(--t);border:solid var(--edge);border-width:1px 0 0 1px;opacity:0;transition:left .3s cubic-bezier(.3,.7,.2,1),opacity .2s}
+.panel.open .caret{opacity:1}
+.card h3{margin:0;padding:11px 12px 6px;display:flex;justify-content:space-between;font-size:.75rem;font-weight:650;letter-spacing:.06em;color:var(--c)}
+.card h3 span{color:var(--mute);font-weight:500;letter-spacing:0}
+.oh,.o{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 8px;padding:7px 12px;font-variant-numeric:tabular-nums}
+.oh{color:var(--mute);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;padding-top:2px;padding-bottom:4px}
+.oh>:nth-child(2),.o>:nth-child(2){text-align:center}
+.oh>:nth-child(3),.o>:nth-child(3){text-align:right}
+ul{list-style:none;margin:0;padding:0}
+.o{font-size:.85rem}
+.o+.o{border-top:1px solid color-mix(in srgb,var(--c) 14%,var(--line))}
+.o:first-child{background:color-mix(in srgb,var(--c) 10%,transparent);box-shadow:inset 3px 0 0 var(--c)}
+.o b{color:var(--c);font-weight:650}
+.o em{grid-column:1/-1;font-style:normal;color:var(--mute);font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msg{margin:0;padding:10px 12px 14px;color:var(--mute);font-size:.85rem}
+.status{margin:10px 0 0;color:var(--mute);font-size:.72rem;text-align:center}
 .err{color:var(--sell)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <main>
-  <h1>Mejores precios de USDT en Binance P2P</h1>
+  <h1 class="sr">Mejores precios de USDT en Binance P2P. Tocá un precio para ver sus órdenes.</h1>
 
   <div class="row" aria-live="polite">
     <div class="pair">
-      <h2>USDT / ARS</h2>
+      <h2>USDT/ARS</h2>
       <div class="prices">
-        <div class="buy"><small>Comprar</small><b id="ARS-BUY">—</b></div>
-        <div class="sell"><small>Vender</small><b id="ARS-SELL">—</b></div>
+        <button class="c buy" data-key="ARS-BUY" aria-expanded="false" aria-controls="panel" aria-label="USDT/ARS comprar, ver órdenes"><b id="p-ARS-BUY">—</b></button>
+        <button class="c sell" data-key="ARS-SELL" aria-expanded="false" aria-controls="panel" aria-label="USDT/ARS vender, ver órdenes"><b id="p-ARS-SELL">—</b></button>
       </div>
     </div>
     <div class="pair">
-      <h2>USDT / BOB</h2>
+      <h2>USDT/BOB</h2>
       <div class="prices">
-        <div class="buy"><small>Comprar</small><b id="BOB-BUY">—</b></div>
-        <div class="sell"><small>Vender</small><b id="BOB-SELL">—</b></div>
+        <button class="c buy" data-key="BOB-BUY" aria-expanded="false" aria-controls="panel" aria-label="USDT/BOB comprar, ver órdenes"><b id="p-BOB-BUY">—</b></button>
+        <button class="c sell" data-key="BOB-SELL" aria-expanded="false" aria-controls="panel" aria-label="USDT/BOB vender, ver órdenes"><b id="p-BOB-SELL">—</b></button>
       </div>
     </div>
+  </div>
+
+  <div class="panel" id="panel">
+    <div class="caret"></div>
+    <div class="clip"><div class="card" id="card"><h3><b id="dt"></b><span>mejores órdenes</span></h3><div id="dl"></div></div></div>
   </div>
 
   <p class="status" id="status"></p>
@@ -56,23 +91,27 @@ b{display:block;font-size:clamp(1.05rem,4.5vw,1.9rem);font-weight:600;font-varia
 
 <script>
 const $ = (id) => document.getElementById(id);
-const fmt = (n) => n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n, d = 2) => n.toLocaleString("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const API_BASE = window.location.hostname.endsWith("github.io") || window.location.protocol === "file:"
   ? "https://p2p-ars.onrender.com"
   : "";
-const SYMBOL = { ARS: "$", BOB: "Bs " };
+const SYMBOL = { ARS: "$", BOB: "Bs" };
 const PAIRS = [["ARS", "BUY"], ["ARS", "SELL"], ["BOB", "BUY"], ["BOB", "SELL"]];
-let loading = false;
+const ROWS = 10;
+const state = {};
+let selected = null, loading = false, again = false;
+const cells = [...document.querySelectorAll(".c")];
 
-async function best(fiat, tradeType) {
+async function getAds(fiat, tradeType, rows) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 25000); // Render gratis puede tardar en despertar
   try {
-    const p = new URLSearchParams({ tradeType, rows: 1, fiat });
+    const p = new URLSearchParams({ tradeType, rows, fiat });
     const r = await fetch(API_BASE + "/api/ads?" + p, { signal: ctrl.signal });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || "Error " + r.status);
-    return Array.isArray(j) && j.length ? j[0].price : null;
+    return Array.isArray(j) ? j : [];
   } catch (e) {
     throw new Error(e.name === "AbortError" ? "tiempo de espera agotado" : e.message);
   } finally {
@@ -80,24 +119,68 @@ async function best(fiat, tradeType) {
   }
 }
 
-async function load() {
-  if (loading) return; // evita consultas superpuestas
+function list(ads) {
+  if (!ads.length) return '<p class="msg">Sin órdenes disponibles.</p>';
+  return '<div class="oh"><span>Precio</span><span>Disponible</span><span>Límites</span></div><ul>' +
+    ads.map((a) => `<li class="o"><b>${fmt(a.price)}</b><span>${fmt(a.available)} USDT</span><span>${fmt(a.min, 0)} – ${fmt(a.max, 0)}</span>` +
+      `<em>${esc(a.nick)}${a.merchant ? " ✓" : ""}${a.methods.length ? " · " + esc(a.methods.join(", ")) : ""}</em></li>`).join("") + "</ul>";
+}
+
+function place() { // origen de la animación y bordes según el precio tocado
+  const btn = cells.find((c) => c.dataset.key === selected);
+  if (!btn) return;
+  const a = btn.getBoundingClientRect(), b = $("panel").getBoundingClientRect();
+  $("panel").style.setProperty("--x", a.left + a.width / 2 - b.left + "px");
+}
+
+function showDetail() {
+  cells.forEach((c) => c.setAttribute("aria-expanded", c.dataset.key === selected));
+  $("panel").classList.toggle("open", !!selected);
+  if (!selected) return;
+  const [fiat, t] = selected.split("-");
+  $("panel").className = "panel open " + (t === "BUY" ? "buy" : "sell");
+  place();
+  $("dt").textContent = "USDT/" + fiat;
+  $("dl").innerHTML = state[selected] ? list(state[selected]) : '<p class="msg">Cargando…</p>';
+}
+
+function paint(key) {
+  const ads = state[key];
+  if (!ads) return;
+  const v = ads[0]?.price;
+  $("p-" + key).innerHTML = v ? `<i>${SYMBOL[key.slice(0, 3)]}</i>${fmt(v)}` : "—";
+  if (key === selected) showDetail();
+}
+
+async function load(force) {
+  if (loading) { if (force) again = true; return; } // evita consultas superpuestas
   loading = true;
   $("status").className = "status";
   $("status").textContent = "Actualizando…";
   const res = await Promise.allSettled(PAIRS.map(async ([fiat, t]) => {
-    const v = await best(fiat, t);
-    $(`${fiat}-${t}`).textContent = v ? SYMBOL[fiat] + fmt(v) : "—";
-  })); // si una consulta falla, se conserva el último precio mostrado
+    const key = fiat + "-" + t;
+    state[key] = await getAds(fiat, t, key === selected ? ROWS : 1); // solo trae más órdenes del precio abierto
+    paint(key);
+  })); // si una consulta falla, se conserva lo último mostrado
   const fail = res.find((r) => r.status === "rejected");
   if (fail) {
     $("status").className = "status err";
-    $("status").textContent = "No se pudo actualizar algún precio: " + fail.reason.message + ". Reintentando en 15 s.";
+    $("status").textContent = "No se pudo actualizar algún dato: " + fail.reason.message + ". Reintentando en 15 s.";
   } else {
-    $("status").textContent = "Última actualización: " + new Date().toLocaleTimeString("es-AR") + " · se actualiza cada 15 s";
+    $("status").textContent = "Actualizado " + new Date().toLocaleTimeString("es-AR") + " · cada 15 s";
   }
   loading = false;
+  if (again) { again = false; load(); }
 }
+
+cells.forEach((btn) => {
+  btn.onclick = () => {
+    selected = selected === btn.dataset.key ? null : btn.dataset.key; // mismo precio = esconder
+    showDetail();
+    if (selected) load(true);
+  };
+});
+window.addEventListener("resize", place);
 
 load();
 setInterval(() => { if (!document.hidden) load(); }, 15000); // no consulta con la pestaña oculta
