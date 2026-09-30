@@ -44,7 +44,8 @@ main{width:100%;padding:8px 8px 24px}
 .panel.open .caret{opacity:1}
 .card h3{margin:0;padding:11px 12px 6px;display:flex;justify-content:space-between;font-size:.75rem;font-weight:650;letter-spacing:.06em;color:var(--c)}
 .card h3 span{color:var(--mute);font-weight:500;letter-spacing:0}
-.oh,.o{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 8px;padding:7px 12px;font-variant-numeric:tabular-nums}
+.oh,.o{display:grid;grid-template-columns:1.15fr 1fr 1.25fr;gap:0 8px;padding:7px 12px;font-variant-numeric:tabular-nums}
+.o{align-items:baseline}
 .oh{color:var(--mute);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;padding-top:2px;padding-bottom:4px}
 .oh>:nth-child(2),.o>:nth-child(2){text-align:center}
 .oh>:nth-child(3),.o>:nth-child(3){text-align:right}
@@ -52,8 +53,18 @@ ul{list-style:none;margin:0;padding:0}
 .o{font-size:.85rem}
 .o+.o{border-top:1px solid color-mix(in srgb,var(--c) 14%,var(--line))}
 .o:first-child{background:color-mix(in srgb,var(--c) 10%,transparent);box-shadow:inset 3px 0 0 var(--c)}
-.o b{color:var(--c);font-weight:650}
-.o em{grid-column:1/-1;font-style:normal;color:var(--mute);font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.o .pr{display:flex;align-items:flex-start;gap:3px;line-height:1}
+.o .pr b{color:var(--c);font-weight:650;font-size:1.15rem;letter-spacing:-.01em}
+.o>:nth-child(2),.o>:nth-child(3){font-size:.72rem;color:var(--ink)}
+.o .pr small{font-size:.55rem;font-weight:500;color:var(--mute);margin-top:.12em}
+.o .who,.o .meta,.o .pay,.o .note{grid-column:1/-1;font-size:.72rem;color:var(--mute)}
+.o .who{display:flex;align-items:baseline;gap:8px;margin-top:3px}
+.o .nk{font-size:.74rem;font-weight:650;color:var(--mute)}
+.o .tr{font-size:.6rem;color:var(--mute);white-space:nowrap}
+.o .pay{font-size:.68rem;line-height:1.45}
+.o .meta{display:flex;flex-wrap:wrap;gap:2px 12px}
+.o .meta strong{color:var(--ink);font-weight:600}
+.o .note{font-style:italic;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .msg{margin:0;padding:10px 12px 14px;color:var(--mute);font-size:.85rem}
 .status{margin:10px 0 0;color:var(--mute);font-size:.72rem;text-align:center}
 .err{color:var(--sell)}
@@ -121,9 +132,22 @@ async function getAds(fiat, tradeType, rows) {
 
 function list(ads) {
   if (!ads.length) return '<p class="msg">Sin órdenes disponibles.</p>';
-  return '<div class="oh"><span>Precio</span><span>Disponible</span><span>Límites</span></div><ul>' +
-    ads.map((a) => `<li class="o"><b>${fmt(a.price)}</b><span>${fmt(a.available)} USDT</span><span>${fmt(a.min, 0)} – ${fmt(a.max, 0)}</span>` +
-      `<em>${esc(a.nick)}${a.merchant ? " ✓" : ""}${a.methods.length ? " · " + esc(a.methods.join(", ")) : ""}</em></li>`).join("") + "</ul>";
+  const ok = Number.isFinite;
+  return '<div class="oh"><span>Precio</span><span>Disponible</span><span>Límites</span></div><ul>' + ads.map((a) => {
+    const meta = [
+      ok(a.minQty) && ok(a.maxQty) && ["Límites USDT", fmt(a.minQty) + " – " + fmt(a.maxQty)],
+    ].filter(Boolean).map(([k, v]) => `<span>${k} <strong>${esc(v)}</strong></span>`).join("");
+    const tr = [
+      ok(a.orders) && fmt(a.orders, 0) + (ok(a.rate) ? " (" + fmt(a.rate * 100, 2) + "%)" : ""),
+      ok(a.positive) && fmt(a.positive * 100, 2) + "%",
+    ].filter(Boolean).join(" · ");
+    const reqs = [a.kyc === 1 && "KYC obligatorio", a.regDays > 0 && a.regDays + "+ días de registro"].filter(Boolean);
+    return `<li class="o"><div class="pr"><b>${fmt(a.price)}</b>${ok(a.payTime) ? `<small>${a.payTime} min</small>` : ""}</div><span>${fmt(a.available)} USDT</span><span>${fmt(a.min, 0)} – ${fmt(a.max, 0)}</span>` +
+      `<div class="who"><span class="nk">${esc(a.nick)}${a.merchant ? " ✓" : ""}</span>${tr ? `<span class="tr">${tr}</span>` : ""}</div>` +
+      (meta ? `<div class="meta">${meta}</div>` : "") +
+      (reqs.length ? `<div class="pay">Requisitos: ${esc(reqs.join(" · "))}</div>` : "") +
+      (a.remarks ? `<div class="note">${esc(a.remarks)}</div>` : "") + "</li>";
+  }).join("") + "</ul>";
 }
 
 function place() { // origen de la animación y bordes según el precio tocado
@@ -188,3 +212,4 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
 </script>
 </body>
 </html>
+
