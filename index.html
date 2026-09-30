@@ -70,12 +70,21 @@ ul{list-style:none;margin:0;padding:0}
 .err{color:var(--sell)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .row.single{grid-template-columns:1fr}
-
 </style>
 </head>
 <body>
 <main>
   <h1 class="sr">Mejores precios de USDT en Binance P2P. Tocá un precio para ver sus órdenes.</h1>
+
+  <div class="row single" aria-live="polite">
+    <div class="pair">
+      <h2>ARS/BOB · implícito</h2>
+      <div class="prices">
+        <button class="c buy" type="button" aria-label="Compra de ARS en bolivianos"><b id="p-ARSBOB-BUY">—</b></button>
+        <button class="c sell" type="button" aria-label="Venta de ARS en bolivianos"><b id="p-ARSBOB-SELL">—</b></button>
+      </div>
+    </div>
+  </div>
 
   <div class="row" aria-live="polite">
     <div class="pair">
@@ -90,16 +99,6 @@ ul{list-style:none;margin:0;padding:0}
       <div class="prices">
         <button class="c buy" data-key="BOB-BUY" aria-expanded="false" aria-controls="panel" aria-label="USDT/BOB comprar, ver órdenes"><b id="p-BOB-BUY">—</b></button>
         <button class="c sell" data-key="BOB-SELL" aria-expanded="false" aria-controls="panel" aria-label="USDT/BOB vender, ver órdenes"><b id="p-BOB-SELL">—</b></button>
-      </div>
-    </div>
-  </div>
-
-  <div class="row single" aria-live="polite">
-    <div class="pair">
-      <h2>ARS/BOB · implícito</h2>
-      <div class="prices">
-        <button class="c buy" type="button" aria-label="ARS/BOB compra implícita"><b id="p-ARSBOB-BUY">—</b></button>
-        <button class="c sell" type="button" aria-label="ARS/BOB venta implícita"><b id="p-ARSBOB-SELL">—</b></button>
       </div>
     </div>
   </div>
@@ -223,17 +222,69 @@ setInterval(() => { if (!document.hidden) load(); }, 15000); // no consulta con 
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 </script>
 <script>
-(function () { // cotización implícita ARS/BOB: usa el estado que carga el script original, sin modificarlo
-  const fmt2 = (n) => n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const price = (key) => (state[key] && state[key][0] && state[key][0].price) || null;
-  function update() {
-    const arsBuy = price("ARS-BUY"), arsSell = price("ARS-SELL");
-    const bobBuy = price("BOB-BUY"), bobSell = price("BOB-SELL");
+(function () { // agregado: fila ARS/BOB implícita + selección manual de órdenes (el script original no se modifica)
+  const fmt5 = (n) => n.toLocaleString("es-AR", { minimumFractionDigits: 5, maximumFractionDigits: 5 });
+  const override = {}; // precio manual elegido por celda: "ARS-BUY" -> precio
+  let suppress = false;
+
+  const eff = (key) => override[key] || (state[key] && state[key][0] && state[key][0].price) || null;
+
+  function renderCell(key) { // pinta celda con el precio vigente (manual o mejor) y marca con ●
+    const v = eff(key);
+    const sym = SYMBOL[key.slice(0, 3)];
+    $("p-" + key).innerHTML = v
+      ? `<i>${sym}</i>${fmt(v)}${override[key] ? '<span style="font-size:.45em;opacity:.85"> ●</span>' : ""}`
+      : "—";
+  }
+
+  const _paint = paint; // envuelve paint para respetar la selección manual tras cada actualización
+  paint = function (key) {
+    _paint(key);
+    if (override[key]) renderCell(key);
+  };
+
+  function update() { // fila ARS/BOB con precios vigentes
+    const arsBuy = eff("ARS-BUY"), arsSell = eff("ARS-SELL");
+    const bobBuy = eff("BOB-BUY"), bobSell = eff("BOB-SELL");
     const elB = $("p-ARSBOB-BUY"), elS = $("p-ARSBOB-SELL");
     if (!elB || !elS) return;
-    elB.innerHTML = (arsBuy && bobSell) ? `<i>$</i>${fmt2(arsBuy / bobSell)}` : "—";
-    elS.innerHTML = (arsSell && bobBuy) ? `<i>$</i>${fmt2(arsSell / bobBuy)}` : "—";
+    elB.innerHTML = (bobSell && arsSell) ? `<i>Bs</i>${fmt5(bobSell / arsSell)}` : "—";
+    elS.innerHTML = (bobBuy && arsBuy) ? `<i>Bs</i>${fmt5(bobBuy / arsBuy)}` : "—";
   }
+
+  // tap sobre una orden del panel: la elige como precio (mismo tap = volver al mejor precio)
+  $("dl").addEventListener("click", (e) => {
+    const li = e.target.closest("li.o");
+    if (!li || !selected) return;
+    const idx = [...li.parentNode.children].indexOf(li);
+    const ad = state[selected] && state[selected][idx];
+    if (!ad) return;
+    if (override[selected] === ad.price) delete override[selected];
+    else override[selected] = ad.price;
+    renderCell(selected);
+    update();
+  });
+
+  // long-press (500 ms) sobre un precio grande: reinicia a mejor precio
+  cells.forEach((btn) => {
+    let t;
+    btn.addEventListener("pointerdown", () => {
+      t = setTimeout(() => {
+        suppress = true;
+        if (override[btn.dataset.key]) {
+          delete override[btn.dataset.key];
+          paint(btn.dataset.key);
+          update();
+        }
+      }, 500);
+    });
+    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) =>
+      btn.addEventListener(ev, () => clearTimeout(t)));
+  });
+  document.addEventListener("click", (e) => { // evita que el long-press dispare el toggle del panel
+    if (suppress) { e.stopPropagation(); e.preventDefault(); suppress = false; }
+  }, true);
+
   setInterval(update, 500);
   update();
 })();
