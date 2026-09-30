@@ -40,6 +40,7 @@ async function fetchAds({ fiat, tradeType, amount, payType, merchants, rows }) {
     available: Number(adv.tradableQuantity),
     min: Number(adv.minSingleTransAmount),
     max: Number(adv.dynamicMaxSingleTransAmount || adv.maxSingleTransAmount),
+    payTime: Number(adv.payTimeLimit),
     methods: (adv.tradeMethods || []).map((m) => m.tradeMethodName || m.identifier),
     nick: advertiser.nickName,
     orders: advertiser.monthOrderCount,
