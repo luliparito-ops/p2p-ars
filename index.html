@@ -71,6 +71,24 @@ ul{list-style:none;margin:0;padding:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .row.single{grid-template-columns:1fr;margin-bottom:8px}
 .row.single .prices{grid-template-columns:1fr}
+
+/* calculadora */
+.calc{padding:4px 10px 10px}
+.cg{display:grid;grid-template-columns:1fr 1.2fr .85fr;gap:8px}
+.cg label{display:block;font-size:.7rem;color:var(--mute);margin:0 0 2px}
+.cg input{width:100%;min-width:0;font:inherit;font-size:16px;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--bg);
+  border:1px solid var(--line);border-radius:5px;padding:7px 8px;text-align:right}
+.cg input:focus{outline:2px solid var(--buy);outline-offset:-1px}
+.hint{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0 0;font-size:.68rem;color:var(--mute)}
+.hint button{font:inherit;font-size:.7rem;color:var(--buy);background:none;border:0;padding:2px 0;cursor:pointer;white-space:nowrap}
+.hint button[hidden]{display:none}
+.res{margin-top:8px;padding-top:6px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.res div{display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;font-size:.85rem}
+.res span{color:var(--mute)}
+.res .g{padding-top:6px}
+.res .g span{color:var(--ink);font-weight:600}
+.res .g b{font-size:1.2rem;font-weight:650;color:var(--buy)}
+.res .g b small{font-size:.65em;font-weight:600;margin-left:.3em}
 </style>
 </head>
 <body>
@@ -82,6 +100,25 @@ ul{list-style:none;margin:0;padding:0}
       <h2>ARS/BOB · IMPLÍCITO</h2>
       <div class="prices">
         <div class="c buy" role="group" aria-label="Cotización implícita: venta de USDT en BOB dividida por compra de USDT en ARS"><b id="p-ARSBOB-BUY">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row single">
+    <div class="pair" id="calc">
+      <h2>CALCULADORA · BS → ARS</h2>
+      <div class="calc">
+        <div class="cg">
+          <div><label for="c-amt">Monto (Bs)</label><input id="c-amt" inputmode="decimal" autocomplete="off" value="12.000"></div>
+          <div><label for="c-rate">Cotización cliente</label><input id="c-rate" inputmode="decimal" autocomplete="off" placeholder="—"></div>
+          <div><label for="c-pct">Ganancia (%)</label><input id="c-pct" inputmode="decimal" autocomplete="off" placeholder="—"></div>
+        </div>
+        <p class="hint"><span id="c-hint"></span><button type="button" id="c-reset" hidden>↺ Restablecer</button></p>
+        <div class="res" aria-live="polite">
+          <div><span>Cliente paga</span><b id="r-cli">—</b></div>
+          <div><span>Yo pago</span><b id="r-me">—</b></div>
+          <div class="g"><span>Ganancia</span><b id="r-gan">—</b></div>
+        </div>
       </div>
     </div>
   </div>
@@ -222,10 +259,11 @@ setInterval(() => { if (!document.hidden) load(); }, 15000); // no consulta con 
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 </script>
 <script>
-(function () { // cotización implícita + selección manual de órdenes
+(function () { // cotización implícita + selección manual de órdenes + calculadora
   const fmt6 = (n) => n.toLocaleString("es-AR", { minimumFractionDigits: 6, maximumFractionDigits: 6 });
   const override = {}; // precio manual elegido por celda: "ARS-BUY" -> precio
   let suppress = false;
+  let imp = null; // cotización implícita vigente (Bs por ARS)
 
   const eff = (key) => override[key] || (state[key] && state[key][0] && state[key][0].price) || null;
 
@@ -238,7 +276,9 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
 
   function update() { // implícita = venta de USDT en BOB ÷ compra de USDT en ARS (Bs por cada ARS)
     const bobSell = eff("BOB-SELL"), arsBuy = eff("ARS-BUY");
-    $("p-ARSBOB-BUY").innerHTML = bobSell && arsBuy ? `<i>Bs</i>${fmt6(bobSell / arsBuy)}` : "—";
+    imp = bobSell && arsBuy ? bobSell / arsBuy : null;
+    $("p-ARSBOB-BUY").innerHTML = imp ? `<i>Bs</i>${fmt6(imp)}` : "—";
+    calc();
   }
 
   const _paint = paint; // respeta la selección manual y recalcula la implícita tras cada actualización
@@ -279,6 +319,56 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   document.addEventListener("click", (e) => { // evita que la pulsación larga también abra o cierre el listado
     if (suppress) { e.stopPropagation(); e.preventDefault(); suppress = false; }
   }, true);
+
+  /* ---- calculadora ----
+     modo "offset": cotización cliente = implícita − 0,0002 (por defecto, sigue a la implícita)
+     modo "pct":    cotización cliente = implícita ÷ (1 + %) (el % elegido se mantiene)
+     modo "rate":   cotización cliente fija; el % se recalcula                         */
+  const OFFSET = 0.0002;
+  let mode = "offset", pctV = NaN, rateV = NaN;
+  const elM = $("c-amt"), elR = $("c-rate"), elP = $("c-pct");
+
+  function num(s) { // acepta "12.000", "12000", "0,00722" y "0.00722"
+    s = String(s).trim();
+    if (!s) return NaN;
+    if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+    return Number(s);
+  }
+  const ars = (n) => SYMBOL.ARS + " " + fmt(n, 0);
+
+  function calc() {
+    const m = num(elM.value);
+    let rate = NaN, pct = NaN;
+    if (mode === "rate") rate = rateV;
+    else if (imp) rate = mode === "pct" ? imp / (1 + pctV / 100) : imp - OFFSET;
+    if (imp && rate > 0) pct = mode === "pct" ? pctV : (imp / rate - 1) * 100;
+
+    if (mode !== "rate" && document.activeElement !== elR) elR.value = rate > 0 ? fmt6(rate) : "";
+    if (mode !== "pct" && document.activeElement !== elP) elP.value = Number.isFinite(pct) ? fmt(pct, 2) : "";
+
+    const cli = m > 0 && rate > 0 ? m / rate : null;
+    const me = m > 0 && imp ? m / imp : null;
+    $("r-cli").textContent = cli ? ars(cli) : "—";
+    $("r-me").textContent = me ? ars(me) : "—";
+    const g = $("r-gan");
+    if (cli && me) {
+      const d = cli - me;
+      g.style.color = d >= 0 ? "var(--buy)" : "var(--sell)";
+      g.innerHTML = (d >= 0 ? "+ " : "− ") + ars(Math.abs(d)) + "<small>" + fmt(pct, 2) + " %</small>";
+    } else { g.textContent = "—"; g.style.color = ""; }
+
+    $("c-hint").textContent = !imp ? "Esperando la cotización implícita…"
+      : mode === "offset" ? "Cotización = implícita − 0,0002, se actualiza sola"
+      : mode === "pct" ? "Cotización calculada para ganar ese %, sigue a la implícita"
+      : "Cotización fija, el % se recalcula";
+    $("c-reset").hidden = mode === "offset";
+  }
+
+  elM.addEventListener("input", calc);
+  elR.addEventListener("input", () => { mode = "rate"; rateV = num(elR.value); calc(); });
+  elP.addEventListener("input", () => { mode = "pct"; pctV = num(elP.value); calc(); });
+  $("c-reset").addEventListener("click", () => { mode = "offset"; if (document.activeElement) document.activeElement.blur(); calc(); });
 
   update();
 })();
