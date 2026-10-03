@@ -89,6 +89,10 @@ ul{list-style:none;margin:0;padding:0}
 .res .g span{color:var(--ink);font-weight:600}
 .res .g b{font-size:1.2rem;font-weight:650;color:var(--buy)}
 .res .g b small{font-size:.65em;font-weight:600;margin-left:.3em}
+.cp{justify-self:end;width:34px;height:30px;display:grid;place-items:center;margin:0 0 2px;color:var(--mute);background:var(--bg);border:1px solid var(--line);border-radius:5px;cursor:pointer}
+.cp:disabled{opacity:.45;cursor:default}
+.cp.ok{color:var(--buy);border-color:var(--buy)}
+.ul{font:inherit;font-size:.7rem;color:var(--buy);background:none;border:0;padding:0;margin:0 0 2px;text-align:left;align-self:end;cursor:pointer;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -106,15 +110,21 @@ ul{list-style:none;margin:0;padding:0}
 
   <div class="row single">
     <div class="pair" id="calc">
-      <h2>CALCULADORA · BS → ARS</h2>
+      <h2>CALCULADORA · ARS → BOB</h2>
       <div class="calc">
         <div class="cg">
-          <div><label for="c-amt">Monto (Bs)</label><input id="c-amt" inputmode="decimal" autocomplete="off" value="12.000"></div>
-          <div><label for="c-rate">Cotización cliente</label><input id="c-rate" inputmode="decimal" autocomplete="off" placeholder="—"></div>
-          <div><label for="c-pct">Ganancia (%)</label><input id="c-pct" inputmode="decimal" autocomplete="off" placeholder="—"></div>
+          <span></span><span></span>
+          <button type="button" class="cp" id="c-copy" aria-label="Copiar mensaje para el cliente" title="Copiar mensaje" disabled></button>
+          <button type="button" class="ul" id="c-unit" aria-label="Cambiar la moneda del monto"><span id="c-unit-t">Monto BOB</span> ⇄</button>
+          <label for="c-rate">Cotización cliente</label>
+          <label for="c-pct">Ganancia (%)</label>
+          <input id="c-amt" inputmode="decimal" autocomplete="off" value="12.000" aria-label="Monto">
+          <input id="c-rate" inputmode="decimal" autocomplete="off" placeholder="—">
+          <input id="c-pct" inputmode="decimal" autocomplete="off" placeholder="—">
         </div>
         <p class="hint"><span id="c-hint"></span><button type="button" id="c-reset" hidden>↺ Restablecer</button></p>
         <div class="res" aria-live="polite">
+          <div><span>Cliente recibe</span><b id="r-get">—</b></div>
           <div><span>Cliente paga</span><b id="r-cli">—</b></div>
           <div><span>Yo pago</span><b id="r-me">—</b></div>
           <div class="g"><span>Ganancia</span><b id="r-gan">—</b></div>
@@ -321,12 +331,21 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   }, true);
 
   /* ---- calculadora ----
+     El cliente siempre paga ARS y recibe BOB. El monto puede ser en BOB o en ARS (botón ⇄).
      modo "offset": cotización cliente = implícita − 0,0002 (por defecto, sigue a la implícita)
      modo "pct":    cotización cliente = implícita ÷ (1 + %) (el % elegido se mantiene)
-     modo "rate":   cotización cliente fija; el % se recalcula                         */
+     modo "rate":   cotización cliente fija; el % se recalcula
+     La cotización se redondea a 5 decimales: lo que ves es lo que se calcula y lo que se copia. */
   const OFFSET = 0.0002;
-  let mode = "offset", pctV = NaN, rateV = NaN;
-  const elM = $("c-amt"), elR = $("c-rate"), elP = $("c-pct");
+  let mode = "offset", unit = "BOB", pctV = NaN, rateV = NaN;
+  const elM = $("c-amt"), elR = $("c-rate"), elP = $("c-pct"), btnC = $("c-copy");
+  const ICON_COPY = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+  const ICON_OK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
+  btnC.innerHTML = ICON_COPY;
+
+  const r5 = (x) => Math.round(x * 1e5) / 1e5;
+  const ars = (n) => SYMBOL.ARS + " " + fmt(n, 0);
+  const bs = (n) => SYMBOL.BOB + " " + fmt(n, 0);
 
   function num(s) { // acepta "12.000", "12000", "0,00722" y "0.00722"
     s = String(s).trim();
@@ -335,29 +354,38 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
     else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
     return Number(s);
   }
-  const ars = (n) => SYMBOL.ARS + " " + fmt(n, 0);
 
-  function calc() {
+  function model() {
     const m = num(elM.value);
     let rate = NaN, pct = NaN;
-    if (mode === "rate") rate = rateV;
-    else if (imp) rate = mode === "pct" ? imp / (1 + pctV / 100) : imp - OFFSET;
-    if (imp && rate > 0) pct = mode === "pct" ? pctV : (imp / rate - 1) * 100;
+    if (mode === "rate") rate = r5(rateV);
+    else if (imp) rate = r5(mode === "pct" ? imp / (1 + pctV / 100) : imp - OFFSET);
+    if (!(rate > 0)) rate = NaN;
+    if (imp && rate) pct = (imp / rate - 1) * 100;
+    let bob = null, cli = null;
+    if (m > 0 && rate) {
+      if (unit === "BOB") { bob = m; cli = Math.round(m / rate); }   // pide bolivianos: calcula pesos
+      else { cli = m; bob = Math.floor(m * rate); }                  // ofrece pesos: bolivianos enteros hacia abajo
+    }
+    const me = bob && imp ? bob / imp : null;                        // pesos que me cuesta conseguir esos bolivianos
+    const gan = cli && me ? cli - me : null;
+    return { m, rate, pct, bob, cli, me, gan };
+  }
 
-    if (mode !== "rate" && document.activeElement !== elR) elR.value = rate > 0 ? fmt6(rate) : "";
-    if (mode !== "pct" && document.activeElement !== elP) elP.value = Number.isFinite(pct) ? fmt(pct, 2) : "";
-
-    const cli = m > 0 && rate > 0 ? m / rate : null;
-    const me = m > 0 && imp ? m / imp : null;
-    $("r-cli").textContent = cli ? ars(cli) : "—";
-    $("r-me").textContent = me ? ars(me) : "—";
+  function calc() {
+    const o = model();
+    if (mode !== "rate" && document.activeElement !== elR) elR.value = o.rate ? fmt(o.rate, 5) : "";
+    if (mode !== "pct" && document.activeElement !== elP) elP.value = Number.isFinite(o.pct) ? fmt(o.pct, 2) : "";
+    $("c-unit-t").textContent = "Monto " + unit;
+    $("r-get").textContent = o.bob ? bs(o.bob) : "—";
+    $("r-cli").textContent = o.cli ? ars(o.cli) : "—";
+    $("r-me").textContent = o.me ? ars(o.me) : "—";
     const g = $("r-gan");
-    if (cli && me) {
-      const d = cli - me;
-      g.style.color = d >= 0 ? "var(--buy)" : "var(--sell)";
-      g.innerHTML = (d >= 0 ? "+ " : "− ") + ars(Math.abs(d)) + "<small>" + fmt(pct, 2) + " %</small>";
+    if (o.gan !== null) {
+      g.style.color = o.gan >= 0 ? "var(--buy)" : "var(--sell)";
+      g.innerHTML = (o.gan >= 0 ? "+ " : "− ") + ars(Math.abs(o.gan)) + "<small>" + fmt(o.pct, 2) + " %</small>";
     } else { g.textContent = "—"; g.style.color = ""; }
-
+    btnC.disabled = !(o.bob && o.cli);
     $("c-hint").textContent = !imp ? "Esperando la cotización implícita…"
       : mode === "offset" ? "Cotización = implícita − 0,0002, se actualiza sola"
       : mode === "pct" ? "Cotización calculada para ganar ese %, sigue a la implícita"
@@ -365,6 +393,42 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
     $("c-reset").hidden = mode === "offset";
   }
 
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); return true; }
+    catch (e) {
+      const ta = document.createElement("textarea");
+      ta.value = t; ta.style.cssText = "position:fixed;opacity:0";
+      document.body.appendChild(ta); ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (_) {}
+      ta.remove();
+      return ok;
+    }
+  }
+
+  let copyTimer;
+  btnC.addEventListener("click", async () => {
+    const o = model();
+    if (!(o.bob && o.cli)) return;
+    const msg = unit === "BOB"
+      ? `${fmt(o.bob, 0)} bolivianos serían ${fmt(o.cli, 0)} pesos, a una cotización de ${fmt(o.rate, 5)}.`
+      : `${fmt(o.cli, 0)} pesos serían ${fmt(o.bob, 0)} bolivianos, a una cotización de ${fmt(o.rate, 5)}.`;
+    const ok = await copyText(msg);
+    clearTimeout(copyTimer);
+    if (ok) {
+      btnC.innerHTML = ICON_OK; btnC.classList.add("ok"); btnC.title = "Copiado";
+      copyTimer = setTimeout(() => { btnC.innerHTML = ICON_COPY; btnC.classList.remove("ok"); btnC.title = "Copiar mensaje"; }, 1600);
+    } else {
+      $("c-hint").textContent = "No se pudo copiar el mensaje";
+    }
+  });
+
+  $("c-unit").addEventListener("click", () => { // alterna BOB ⇄ ARS y conserva la misma operación
+    const o = model();
+    if (o.m > 0 && o.rate) elM.value = fmt(unit === "BOB" ? o.cli : o.bob, 0);
+    unit = unit === "BOB" ? "ARS" : "BOB";
+    calc();
+  });
   elM.addEventListener("input", calc);
   elR.addEventListener("input", () => { mode = "rate"; rateV = num(elR.value); calc(); });
   elP.addEventListener("input", () => { mode = "pct"; pctV = num(elP.value); calc(); });
