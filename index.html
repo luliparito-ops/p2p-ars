@@ -4,8 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>USDT · ARS y BOB · P2P</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@500;600;700&display=swap">
 <style>
 :root{
+  --sig:"Fira Sans Condensed","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
   --bg:#eef1ee; --panel:#fff; --ink:#131c17; --mute:#6b786f; --line:#e0e6e1;
   --buy:#0f7a4d; --sell:#b4382c; --even:#a97b00;
   color-scheme:light;
@@ -24,12 +28,12 @@ main{width:100%;padding:8px 8px 24px}
   box-shadow:0 1px 2px rgb(0 0 0/.05),0 10px 22px -16px rgb(0 0 0/.3)}
 .pair h2{margin:0;padding:3px 10px 2px;line-height:1.1;font-size:.66rem;font-weight:600;color:var(--mute);letter-spacing:.1em}
 .prices{display:grid;grid-template-columns:1fr 1fr;padding:1px;gap:1px}
-.c{position:relative;font:inherit;color:inherit;margin:0;padding:11px 2px;border:0;border-radius:5px;text-align:center;min-width:0;cursor:pointer;-webkit-tap-highlight-color:transparent;
+.c{position:relative;font:inherit;color:inherit;margin:0;padding:13px 2px;border:0;border-radius:5px;text-align:center;min-width:0;cursor:pointer;-webkit-tap-highlight-color:transparent;
   background:color-mix(in srgb,var(--c) 7%,transparent);transition:background .2s,box-shadow .2s}
 .c:active{background:color-mix(in srgb,var(--c) 16%,transparent)}
 .c[aria-expanded="true"]{background:color-mix(in srgb,var(--c) 16%,var(--panel));box-shadow:inset 0 0 0 1px var(--edge)}
-.c b{display:block;color:var(--c);font-size:clamp(.72rem,3.3vw,2rem);font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap}
-.c b i{font-style:normal;font-size:.5em;font-weight:600;opacity:.7;margin-right:.2em}
+.c b{display:block;color:var(--c);font-size:clamp(.78rem,3.6vw,1.6rem);font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.c b i,.res b i{font-family:var(--sig);font-style:normal;font-size:.7em;font-weight:600;opacity:.7;margin-right:.25em}
 :focus-visible{outline:2px solid var(--c,var(--buy));outline-offset:-2px}
 
 .panel{--x:50%;position:relative;display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.3,.7,.2,1)}
@@ -76,8 +80,8 @@ ul{list-style:none;margin:0;padding:0}
 .calc{padding:8px 10px 10px}
 .cg{display:grid;grid-template-columns:minmax(0,1fr) minmax(max-content,35%) minmax(max-content,30%);gap:0 6px;align-items:end;font-size:16px}
 .cg label{display:flex;align-items:center;height:22px;white-space:nowrap;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.15;color:var(--mute);margin:0 0 3px}
-.cg input{width:0;min-width:100%;font:inherit;font-size:16px;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--bg);
-  border:1px solid var(--line);border-radius:5px;padding:7px 6px;text-align:right}
+.cg input{width:0;min-width:100%;font:inherit;font-size:17px;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--bg);
+  border:1px solid var(--line);border-radius:5px;padding:9px 6px;text-align:right}
 #c-rate,#c-pct{text-align:center;padding-left:4px;padding-right:4px}
 .cg input:focus{outline:2px solid var(--buy);outline-offset:-1px}
 .hint{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0 0;font-size:.68rem;color:var(--mute)}
@@ -90,17 +94,18 @@ ul{list-style:none;margin:0;padding:0}
 .cp.ok{color:var(--buy);border-color:var(--buy)}
 .ul{font:inherit;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.15;height:22px;display:flex;align-items:center;gap:4px;color:var(--buy);background:none;border:0;padding:0;margin:0 0 3px;text-align:left;cursor:pointer;white-space:nowrap}
 .res{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
-.res>div{display:flex;flex-direction:column;justify-content:space-between;gap:2px;min-width:0;padding:5px 8px 6px;border-radius:5px;background:color-mix(in srgb,var(--mute) 8%,transparent)}
+.res>div{display:flex;flex-direction:column;justify-content:space-between;gap:2px;min-width:0;padding:8px 10px 9px;border-radius:5px;background:color-mix(in srgb,var(--mute) 8%,transparent)}
 .res span{align-self:flex-start;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.2;color:var(--mute);white-space:nowrap}
-.res b{align-self:flex-end;line-height:1.15;max-width:100%;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.8rem,3.9vw,.95rem);font-weight:650;white-space:nowrap}
+.res b{align-self:flex-end;line-height:1.15;max-width:100%;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.95rem,4.8vw,1.3rem);font-weight:650;white-space:nowrap}
 .res .g.pos{--k:var(--buy)} .res .g.neu{--k:var(--even)} .res .g.neg{--k:var(--sell)}
 .res .g{background:color-mix(in srgb,var(--k,var(--mute)) 13%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k,var(--mute)) 35%,transparent)}
 .res .g span{color:var(--k,var(--mute))}
 .res .g b{color:var(--k,var(--ink))}
-@media (max-width:350px){#c-amt{font-size:14px}}
+@media (max-width:360px){#c-amt{font-size:16px}}
 #imp-cell{touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .ul.inv{color:var(--sell)}
-#imp-cell b{font-size:18px}
+#imp-cell{padding:15px 2px}
+#imp-cell b{font-size:19px}
 </style>
 </head>
 <body>
@@ -351,7 +356,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   btnC.innerHTML = ICON_COPY;
 
   const r5 = (x) => Math.round(x * 1e5) / 1e5;
-  const cur = (c, n) => SYMBOL[c] + " " + fmt(n, 0);
+  const cur = (c, n) => `<i>${SYMBOL[c]}</i>${fmt(n, 0)}`;
 
   function num(s) { // acepta "12.000", "12000", "0,00722" y "0.00722"
     s = String(s).trim();
@@ -390,16 +395,16 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
     if (mode !== "pct" && document.activeElement !== elP) elP.value = Number.isFinite(o.pct) ? fmt(o.pct, 2) : "";
     $("c-unit-t").textContent = "Monto " + unit;
     const payN = o.payCur === "ARS" ? o.ars : o.bob, getN = o.getCur === "ARS" ? o.ars : o.bob;
-    $("r-cli").textContent = payN ? cur(o.payCur, payN) : "—";
-    $("r-get").textContent = getN ? cur(o.getCur, getN) : "—";
-    $("r-me").textContent = o.me ? cur(o.payCur, o.me) : "—";
+    $("r-cli").innerHTML = payN ? cur(o.payCur, payN) : "—";
+    $("r-get").innerHTML = getN ? cur(o.getCur, getN) : "—";
+    $("r-me").innerHTML = o.me ? cur(o.payCur, o.me) : "—";
     const g = $("r-gan");
     const cell = g.parentNode;
     cell.classList.remove("pos", "neu", "neg");
     if (o.gan !== null) {
       const r = Math.round(o.gan);
       cell.classList.add(r > 0 ? "pos" : r < 0 ? "neg" : "neu");
-      g.textContent = (r > 0 ? "+ " : r < 0 ? "− " : "") + cur(o.payCur, Math.abs(r));
+      g.innerHTML = (r > 0 ? "+ " : r < 0 ? "− " : "") + cur(o.payCur, Math.abs(r));
     } else g.textContent = "—";
     btnC.disabled = !(o.bob && o.ars);
     $("c-hint").textContent = !imp ? "Esperando la cotización implícita…"
