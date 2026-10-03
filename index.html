@@ -99,6 +99,8 @@ ul{list-style:none;margin:0;padding:0}
 .res .g b{color:var(--k,var(--ink))}
 @media (max-width:350px){#c-amt{font-size:14px}}
 #imp-cell{touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.ul.inv{color:var(--sell)}
+#imp-cell b{font-size:18px}
 </style>
 </head>
 <body>
@@ -424,9 +426,11 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   btnC.addEventListener("click", async () => {
     const o = model();
     if (!(o.bob && o.ars)) return;
-    const msg = unit === "BOB"
-      ? `${fmt(o.bob, 0)} bolivianos serían ${fmt(o.ars, 0)} pesos, a una cotización de ${fmt(o.rate, 5)}.`
-      : `${fmt(o.ars, 0)} pesos serían ${fmt(o.bob, 0)} bolivianos, a una cotización de ${fmt(o.rate, 5)}.`;
+    // el cliente "pide" si el monto escrito es lo que recibe, y "ofrece" si es lo que envía
+    const payN = o.payCur === "ARS" ? o.ars : o.bob, getN = o.getCur === "ARS" ? o.ars : o.bob;
+    const msg = unit === o.getCur
+      ? `Para recibir ${fmt(getN, 0)} ${o.getCur} tendrías que enviar ${fmt(payN, 0)} ${o.payCur} (cotización ${fmt(o.rate, 5)}).`
+      : `Si envías ${fmt(payN, 0)} ${o.payCur}, recibes ${fmt(getN, 0)} ${o.getCur} (cotización ${fmt(o.rate, 5)}).`;
     const ok = await copyText(msg);
     clearTimeout(copyTimer);
     if (ok) {
@@ -456,6 +460,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
     mode = "offset"; // la cotización fija de una dirección no sirve en la otra
     impCell.classList.toggle("buy", dir === "fwd");
     impCell.classList.toggle("sell", dir === "inv");
+    $("c-unit").classList.toggle("inv", dir === "inv");
     $("imp-title").textContent = dir === "fwd" ? "ARS → BOB" : "BOB → ARS";
     impCell.setAttribute("aria-label", "Cotización implícita " + (dir === "fwd" ? "ARS a BOB" : "BOB a ARS") + ". Tocá dos veces para invertir la dirección");
     update();
