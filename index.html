@@ -28,8 +28,8 @@ main{width:100%;padding:8px 8px 24px}
   background:color-mix(in srgb,var(--c) 7%,transparent);transition:background .2s,box-shadow .2s}
 .c:active{background:color-mix(in srgb,var(--c) 16%,transparent)}
 .c[aria-expanded="true"]{background:color-mix(in srgb,var(--c) 16%,var(--panel));box-shadow:inset 0 0 0 1px var(--edge)}
-.c b{display:block;color:var(--c);font-size:clamp(.9rem,3.9vw,2.6rem);font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap}
-.c b i{font-style:normal;font-size:.6em;font-weight:600;opacity:.7;margin-right:.15em}
+.c b{display:block;color:var(--c);font-size:clamp(.72rem,3.3vw,2rem);font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.c b i{font-style:normal;font-size:.5em;font-weight:600;opacity:.7;margin-right:.2em}
 :focus-visible{outline:2px solid var(--c,var(--buy));outline-offset:-2px}
 
 .panel{--x:50%;position:relative;display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.3,.7,.2,1)}
@@ -74,7 +74,7 @@ ul{list-style:none;margin:0;padding:0}
 
 /* calculadora */
 .calc{padding:8px 10px 10px}
-.cg{display:grid;grid-template-columns:1fr max-content max-content;gap:0 6px;align-items:end;font-size:16px}
+.cg{display:grid;grid-template-columns:minmax(0,1fr) minmax(max-content,35%) minmax(max-content,30%);gap:0 6px;align-items:end;font-size:16px}
 .cg label{display:flex;align-items:center;height:22px;white-space:nowrap;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.15;color:var(--mute);margin:0 0 3px}
 .cg input{width:0;min-width:100%;font:inherit;font-size:16px;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--bg);
   border:1px solid var(--line);border-radius:5px;padding:7px 6px;text-align:right}
@@ -89,12 +89,16 @@ ul{list-style:none;margin:0;padding:0}
 .cp:disabled{opacity:.45;cursor:default}
 .cp.ok{color:var(--buy);border-color:var(--buy)}
 .ul{font:inherit;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.15;height:22px;display:flex;align-items:center;gap:4px;color:var(--buy);background:none;border:0;padding:0;margin:0 0 3px;text-align:left;cursor:pointer;white-space:nowrap}
-.res{display:grid;grid-template-columns:1fr 1fr;gap:12px 8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
-.res>div{display:flex;flex-direction:column;justify-content:space-between;gap:4px;min-width:0;min-height:46px;padding:0}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.res>div{display:flex;flex-direction:column;justify-content:space-between;gap:2px;min-width:0;padding:5px 8px 6px;border-radius:5px;background:color-mix(in srgb,var(--mute) 8%,transparent)}
 .res span{align-self:flex-start;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.2;color:var(--mute);white-space:nowrap}
-.res b{margin-top:auto;align-self:flex-end;max-width:100%;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.8rem,3.9vw,.95rem);font-weight:650;white-space:nowrap}
+.res b{align-self:flex-end;line-height:1.15;max-width:100%;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.8rem,3.9vw,.95rem);font-weight:650;white-space:nowrap}
 .res .g.pos{--k:var(--buy)} .res .g.neu{--k:var(--even)} .res .g.neg{--k:var(--sell)}
-.res .g b{color:var(--k,var(--ink));font-size:clamp(1.1rem,6vw,1.6rem);line-height:1}
+.res .g{background:color-mix(in srgb,var(--k,var(--mute)) 13%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k,var(--mute)) 35%,transparent)}
+.res .g span{color:var(--k,var(--mute))}
+.res .g b{color:var(--k,var(--ink))}
+@media (max-width:350px){#c-amt{font-size:14px}}
+#imp-cell{touch-action:manipulation;user-select:none;-webkit-user-select:none}
 </style>
 </head>
 <body>
@@ -103,9 +107,9 @@ ul{list-style:none;margin:0;padding:0}
 
   <div class="row single" aria-live="polite">
     <div class="pair">
-      <h2>ARS → BOB</h2>
+      <h2 id="imp-title">ARS → BOB</h2>
       <div class="prices">
-        <div class="c buy" role="group" aria-label="Cotización implícita: venta de USDT en BOB dividida por compra de USDT en ARS"><b id="p-ARSBOB-BUY">—</b></div>
+        <div class="c buy" id="imp-cell" role="button" tabindex="0" aria-label="Cotización implícita ARS a BOB. Tocá dos veces para invertir la dirección"><b id="p-ARSBOB-BUY">—</b></div>
       </div>
     </div>
   </div>
@@ -126,7 +130,7 @@ ul{list-style:none;margin:0;padding:0}
           <div><span>Paga</span><b id="r-cli">—</b></div>
           <div><span>Recibe</span><b id="r-get">—</b></div>
           <div><span>Pago</span><b id="r-me">—</b></div>
-          <div class="g"><span class="sr">Saldo</span><b id="r-gan">—</b></div>
+          <div class="g"><span>Saldo</span><b id="r-gan">—</b></div>
         </div>
       </div>
     </div>
@@ -164,7 +168,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const API_BASE = window.location.hostname.endsWith("github.io") || window.location.protocol === "file:"
   ? "https://p2p-ars.onrender.com"
   : "";
-const SYMBOL = { ARS: "$", BOB: "Bs" };
+const SYMBOL = { ARS: "ARS", BOB: "BOB" };
 const PAIRS = [["ARS", "BUY"], ["ARS", "SELL"], ["BOB", "BUY"], ["BOB", "SELL"]];
 const ROWS = 10;
 const state = {};
@@ -272,7 +276,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   const fmt6 = (n) => n.toLocaleString("es-AR", { minimumFractionDigits: 6, maximumFractionDigits: 6 });
   const override = {}; // precio manual elegido por celda: "ARS-BUY" -> precio
   let suppress = false;
-  let imp = null; // cotización implícita vigente (Bs por ARS)
+  let imp = null; // cotización implícita vigente (BOB por ARS)
+  let dir = "fwd"; // "fwd" = ARS → BOB · "inv" = BOB → ARS
 
   const eff = (key) => override[key] || (state[key] && state[key][0] && state[key][0].price) || null;
 
@@ -283,10 +288,11 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
       : "—";
   }
 
-  function update() { // implícita = venta de USDT en BOB ÷ compra de USDT en ARS (Bs por cada ARS)
-    const bobSell = eff("BOB-SELL"), arsBuy = eff("ARS-BUY");
-    imp = bobSell && arsBuy ? bobSell / arsBuy : null;
-    $("p-ARSBOB-BUY").innerHTML = imp ? `<i>Bs</i>${fmt6(imp)}` : "—";
+  function update() { // ida: venta de USDT en BOB ÷ compra de USDT en ARS · vuelta: compra de USDT en BOB ÷ venta de USDT en ARS (siempre BOB por cada ARS)
+    const inv = dir === "inv";
+    const n = eff(inv ? "BOB-BUY" : "BOB-SELL"), d = eff(inv ? "ARS-SELL" : "ARS-BUY");
+    imp = n && d ? n / d : null;
+    $("p-ARSBOB-BUY").innerHTML = imp ? `<i>BOB</i>${fmt6(imp)}` : "—";
     calc();
   }
 
@@ -343,8 +349,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   btnC.innerHTML = ICON_COPY;
 
   const r5 = (x) => Math.round(x * 1e5) / 1e5;
-  const ars = (n) => SYMBOL.ARS + " " + fmt(n, 0);
-  const bs = (n) => SYMBOL.BOB + " " + fmt(n, 0);
+  const cur = (c, n) => SYMBOL[c] + " " + fmt(n, 0);
 
   function num(s) { // acepta "12.000", "12000", "0,00722" y "0.00722"
     s = String(s).trim();
@@ -355,20 +360,26 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   }
 
   function model() {
+    const inv = dir === "inv";
     const m = num(elM.value);
     let rate = NaN, pct = NaN;
     if (mode === "rate") rate = r5(rateV);
-    else if (imp) rate = r5(mode === "pct" ? imp / (1 + pctV / 100) : imp - OFFSET);
+    else if (imp) rate = r5(mode === "pct" ? (inv ? imp * (1 + pctV / 100) : imp / (1 + pctV / 100)) : imp + (inv ? OFFSET : -OFFSET));
     if (!(rate > 0)) rate = NaN;
-    if (imp && rate) pct = (imp / rate - 1) * 100;
-    let bob = null, cli = null;
+    if (imp && rate) pct = (inv ? rate / imp - 1 : imp / rate - 1) * 100;
+    let bob = null, ars = null;
     if (m > 0 && rate) {
-      if (unit === "BOB") { bob = m; cli = Math.round(m / rate); }   // pide bolivianos: calcula pesos
-      else { cli = m; bob = Math.floor(m * rate); }                  // ofrece pesos: bolivianos enteros hacia abajo
+      if (!inv) { // el cliente da ARS y recibe BOB
+        if (unit === "BOB") { bob = m; ars = Math.round(m / rate); }
+        else { ars = m; bob = Math.floor(m * rate); }
+      } else {    // el cliente da BOB y recibe ARS
+        if (unit === "BOB") { bob = m; ars = Math.floor(m / rate); }
+        else { ars = m; bob = Math.round(m * rate); }
+      }
     }
-    const me = bob && imp ? bob / imp : null;                        // pesos que me cuesta conseguir esos bolivianos
-    const gan = cli && me ? cli - me : null;
-    return { m, rate, pct, bob, cli, me, gan };
+    const me = inv ? (ars && imp ? ars * imp : null) : (bob && imp ? bob / imp : null); // lo que me cuesta, en la moneda que paga el cliente
+    const gan = bob && ars && me ? (inv ? bob : ars) - me : null;
+    return { m, rate, pct, bob, ars, me, gan, payCur: inv ? "BOB" : "ARS", getCur: inv ? "ARS" : "BOB" };
   }
 
   function calc() {
@@ -376,20 +387,21 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
     if (mode !== "rate" && document.activeElement !== elR) elR.value = o.rate ? fmt(o.rate, 5) : "";
     if (mode !== "pct" && document.activeElement !== elP) elP.value = Number.isFinite(o.pct) ? fmt(o.pct, 2) : "";
     $("c-unit-t").textContent = "Monto " + unit;
-    $("r-get").textContent = o.bob ? bs(o.bob) : "—";
-    $("r-cli").textContent = o.cli ? ars(o.cli) : "—";
-    $("r-me").textContent = o.me ? ars(o.me) : "—";
+    const payN = o.payCur === "ARS" ? o.ars : o.bob, getN = o.getCur === "ARS" ? o.ars : o.bob;
+    $("r-cli").textContent = payN ? cur(o.payCur, payN) : "—";
+    $("r-get").textContent = getN ? cur(o.getCur, getN) : "—";
+    $("r-me").textContent = o.me ? cur(o.payCur, o.me) : "—";
     const g = $("r-gan");
     const cell = g.parentNode;
     cell.classList.remove("pos", "neu", "neg");
     if (o.gan !== null) {
       const r = Math.round(o.gan);
       cell.classList.add(r > 0 ? "pos" : r < 0 ? "neg" : "neu");
-      g.textContent = ars(Math.abs(r));
+      g.textContent = (r > 0 ? "+ " : r < 0 ? "− " : "") + cur(o.payCur, Math.abs(r));
     } else g.textContent = "—";
-    btnC.disabled = !(o.bob && o.cli);
+    btnC.disabled = !(o.bob && o.ars);
     $("c-hint").textContent = !imp ? "Esperando la cotización implícita…"
-      : mode === "offset" ? "Cotización = implícita − 0,0002, se actualiza sola"
+      : mode === "offset" ? "Cotización = implícita " + (dir === "inv" ? "+" : "−") + " 0,0002, se actualiza sola"
       : mode === "pct" ? "Cotización calculada para ganar ese %, sigue a la implícita"
       : "Cotización fija, el % se recalcula";
     $("c-reset").hidden = mode === "offset";
@@ -411,10 +423,10 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   let copyTimer;
   btnC.addEventListener("click", async () => {
     const o = model();
-    if (!(o.bob && o.cli)) return;
+    if (!(o.bob && o.ars)) return;
     const msg = unit === "BOB"
-      ? `${fmt(o.bob, 0)} bolivianos serían ${fmt(o.cli, 0)} pesos, a una cotización de ${fmt(o.rate, 5)}.`
-      : `${fmt(o.cli, 0)} pesos serían ${fmt(o.bob, 0)} bolivianos, a una cotización de ${fmt(o.rate, 5)}.`;
+      ? `${fmt(o.bob, 0)} bolivianos serían ${fmt(o.ars, 0)} pesos, a una cotización de ${fmt(o.rate, 5)}.`
+      : `${fmt(o.ars, 0)} pesos serían ${fmt(o.bob, 0)} bolivianos, a una cotización de ${fmt(o.rate, 5)}.`;
     const ok = await copyText(msg);
     clearTimeout(copyTimer);
     if (ok) {
@@ -427,7 +439,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
 
   $("c-unit").addEventListener("click", () => { // alterna BOB ⇄ ARS y conserva la misma operación
     const o = model();
-    if (o.m > 0 && o.rate) elM.value = fmt(unit === "BOB" ? o.cli : o.bob, 0);
+    if (o.m > 0 && o.rate) elM.value = fmt(unit === "BOB" ? o.ars : o.bob, 0);
     unit = unit === "BOB" ? "ARS" : "BOB";
     calc();
   });
@@ -435,6 +447,24 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   elR.addEventListener("input", () => { mode = "rate"; rateV = num(elR.value); calc(); });
   elP.addEventListener("input", () => { mode = "pct"; pctV = num(elP.value); calc(); });
   $("c-reset").addEventListener("click", () => { mode = "offset"; if (document.activeElement) document.activeElement.blur(); calc(); });
+
+  // doble toque en la cotización implícita: invierte la dirección (ARS → BOB verde ⇄ BOB → ARS rojo)
+  const impCell = $("imp-cell");
+  let lastTap = 0;
+  function toggleDir() {
+    dir = dir === "fwd" ? "inv" : "fwd";
+    mode = "offset"; // la cotización fija de una dirección no sirve en la otra
+    impCell.classList.toggle("buy", dir === "fwd");
+    impCell.classList.toggle("sell", dir === "inv");
+    $("imp-title").textContent = dir === "fwd" ? "ARS → BOB" : "BOB → ARS";
+    impCell.setAttribute("aria-label", "Cotización implícita " + (dir === "fwd" ? "ARS a BOB" : "BOB a ARS") + ". Tocá dos veces para invertir la dirección");
+    update();
+  }
+  impCell.addEventListener("click", () => {
+    const t = Date.now();
+    if (t - lastTap < 400) { lastTap = 0; toggleDir(); } else lastTap = t;
+  });
+  impCell.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleDir(); } });
 
   update();
 })();
