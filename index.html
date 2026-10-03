@@ -7,11 +7,11 @@
 <style>
 :root{
   --bg:#eef1ee; --panel:#fff; --ink:#131c17; --mute:#6b786f; --line:#e0e6e1;
-  --buy:#0f7a4d; --sell:#b4382c;
+  --buy:#0f7a4d; --sell:#b4382c; --even:#a97b00;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){--bg:#0d1310;--panel:#161f1a;--ink:#e9f0ea;--mute:#8a9a90;--line:#26332c;--buy:#3fd08c;--sell:#ff7a6b;color-scheme:dark}
+  :root:not([data-theme="light"]){--bg:#0d1310;--panel:#161f1a;--ink:#e9f0ea;--mute:#8a9a90;--line:#26332c;--buy:#3fd08c;--sell:#ff7a6b;--even:#f0c040;color-scheme:dark}
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 "Segoe UI",system-ui,sans-serif}
@@ -73,26 +73,30 @@ ul{list-style:none;margin:0;padding:0}
 .row.single .prices{grid-template-columns:1fr}
 
 /* calculadora */
-.calc{padding:4px 10px 10px}
-.cg{display:grid;grid-template-columns:1fr 1.2fr .85fr;gap:8px}
-.cg label{display:block;font-size:.7rem;color:var(--mute);margin:0 0 2px}
-.cg input{width:100%;min-width:0;font:inherit;font-size:16px;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--bg);
-  border:1px solid var(--line);border-radius:5px;padding:7px 8px;text-align:right}
+.calc{padding:8px 10px 10px}
+.cg{display:grid;grid-template-columns:1fr max-content max-content;gap:0 6px;align-items:end;font-size:16px}
+.cg label{display:flex;align-items:center;height:22px;white-space:nowrap;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.15;color:var(--mute);margin:0 0 3px}
+.cg input{width:0;min-width:100%;font:inherit;font-size:16px;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--bg);
+  border:1px solid var(--line);border-radius:5px;padding:7px 6px;text-align:right}
+#c-rate,#c-pct{text-align:center;padding-left:4px;padding-right:4px}
 .cg input:focus{outline:2px solid var(--buy);outline-offset:-1px}
 .hint{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0 0;font-size:.68rem;color:var(--mute)}
 .hint button{font:inherit;font-size:.7rem;color:var(--buy);background:none;border:0;padding:2px 0;cursor:pointer;white-space:nowrap}
 .hint button[hidden]{display:none}
-.res{margin-top:8px;padding-top:6px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
-.res div{display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;font-size:.85rem}
-.res span{color:var(--mute)}
-.res .g{padding-top:6px}
-.res .g span{color:var(--ink);font-weight:600}
-.res .g b{font-size:1.2rem;font-weight:650;color:var(--buy)}
-.res .g b small{font-size:.65em;font-weight:600;margin-left:.3em}
-.cp{justify-self:end;width:34px;height:30px;display:grid;place-items:center;margin:0 0 2px;color:var(--mute);background:var(--bg);border:1px solid var(--line);border-radius:5px;cursor:pointer}
+.lh{display:flex;justify-content:space-between;align-items:center;gap:6px;min-width:0;height:22px;margin-bottom:3px}
+.lh label{margin:0}
+.cp{flex:none;width:24px;height:20px;display:grid;place-items:center;margin:0;padding:0;color:var(--mute);background:none;border:1px solid var(--line);border-radius:4px;cursor:pointer}
 .cp:disabled{opacity:.45;cursor:default}
 .cp.ok{color:var(--buy);border-color:var(--buy)}
-.ul{font:inherit;font-size:.7rem;color:var(--buy);background:none;border:0;padding:0;margin:0 0 2px;text-align:left;align-self:end;cursor:pointer;white-space:nowrap}
+.ul{font:inherit;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.15;height:22px;display:flex;align-items:center;gap:4px;color:var(--buy);background:none;border:0;padding:0;margin:0 0 3px;text-align:left;cursor:pointer;white-space:nowrap}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.res>div{display:flex;flex-direction:column;justify-content:space-between;gap:4px;min-width:0;min-height:54px;padding:6px 8px 7px;border-radius:5px;background:color-mix(in srgb,var(--mute) 8%,transparent)}
+.res span{align-self:flex-start;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.2;color:var(--mute);white-space:nowrap}
+.res b{align-self:flex-end;max-width:100%;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.8rem,3.9vw,.95rem);font-weight:650;white-space:nowrap}
+.res .g.pos{--k:var(--buy)} .res .g.neu{--k:var(--even)} .res .g.neg{--k:var(--sell)}
+.res .g{background:color-mix(in srgb,var(--k,var(--mute)) 13%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k,var(--mute)) 35%,transparent)}
+.res .g span{color:var(--k,var(--mute))}
+.res .g b{color:var(--k,var(--ink))}
 </style>
 </head>
 <body>
@@ -101,7 +105,7 @@ ul{list-style:none;margin:0;padding:0}
 
   <div class="row single" aria-live="polite">
     <div class="pair">
-      <h2>ARS/BOB · IMPLÍCITO</h2>
+      <h2>ARS → BOB</h2>
       <div class="prices">
         <div class="c buy" role="group" aria-label="Cotización implícita: venta de USDT en BOB dividida por compra de USDT en ARS"><b id="p-ARSBOB-BUY">—</b></div>
       </div>
@@ -110,24 +114,21 @@ ul{list-style:none;margin:0;padding:0}
 
   <div class="row single">
     <div class="pair" id="calc">
-      <h2>CALCULADORA · ARS → BOB</h2>
       <div class="calc">
         <div class="cg">
-          <span></span><span></span>
-          <button type="button" class="cp" id="c-copy" aria-label="Copiar mensaje para el cliente" title="Copiar mensaje" disabled></button>
           <button type="button" class="ul" id="c-unit" aria-label="Cambiar la moneda del monto"><span id="c-unit-t">Monto BOB</span> ⇄</button>
           <label for="c-rate">Cotización cliente</label>
-          <label for="c-pct">Ganancia (%)</label>
+          <div class="lh"><label for="c-pct">Ganancia (%)</label><button type="button" class="cp" id="c-copy" aria-label="Copiar mensaje para el cliente" title="Copiar mensaje" disabled></button></div>
           <input id="c-amt" inputmode="decimal" autocomplete="off" value="12.000" aria-label="Monto">
           <input id="c-rate" inputmode="decimal" autocomplete="off" placeholder="—">
           <input id="c-pct" inputmode="decimal" autocomplete="off" placeholder="—">
         </div>
         <p class="hint"><span id="c-hint"></span><button type="button" id="c-reset" hidden>↺ Restablecer</button></p>
         <div class="res" aria-live="polite">
-          <div><span>Cliente recibe</span><b id="r-get">—</b></div>
-          <div><span>Cliente paga</span><b id="r-cli">—</b></div>
-          <div><span>Yo pago</span><b id="r-me">—</b></div>
-          <div class="g"><span>Ganancia</span><b id="r-gan">—</b></div>
+          <div><span>Paga</span><b id="r-cli">—</b></div>
+          <div><span>Recibe</span><b id="r-get">—</b></div>
+          <div><span>Pago</span><b id="r-me">—</b></div>
+          <div class="g"><span>Saldo</span><b id="r-gan">—</b></div>
         </div>
       </div>
     </div>
@@ -339,8 +340,8 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   const OFFSET = 0.0002;
   let mode = "offset", unit = "BOB", pctV = NaN, rateV = NaN;
   const elM = $("c-amt"), elR = $("c-rate"), elP = $("c-pct"), btnC = $("c-copy");
-  const ICON_COPY = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
-  const ICON_OK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
+  const ICON_COPY = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+  const ICON_OK = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
   btnC.innerHTML = ICON_COPY;
 
   const r5 = (x) => Math.round(x * 1e5) / 1e5;
@@ -381,10 +382,13 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
     $("r-cli").textContent = o.cli ? ars(o.cli) : "—";
     $("r-me").textContent = o.me ? ars(o.me) : "—";
     const g = $("r-gan");
+    const cell = g.parentNode;
+    cell.classList.remove("pos", "neu", "neg");
     if (o.gan !== null) {
-      g.style.color = o.gan >= 0 ? "var(--buy)" : "var(--sell)";
-      g.innerHTML = (o.gan >= 0 ? "+ " : "− ") + ars(Math.abs(o.gan)) + "<small>" + fmt(o.pct, 2) + " %</small>";
-    } else { g.textContent = "—"; g.style.color = ""; }
+      const r = Math.round(o.gan);
+      cell.classList.add(r > 0 ? "pos" : r < 0 ? "neg" : "neu");
+      g.textContent = (r > 0 ? "+ " : r < 0 ? "− " : "") + ars(Math.abs(r));
+    } else g.textContent = "—";
     btnC.disabled = !(o.bob && o.cli);
     $("c-hint").textContent = !imp ? "Esperando la cotización implícita…"
       : mode === "offset" ? "Cotización = implícita − 0,0002, se actualiza sola"
