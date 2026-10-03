@@ -89,14 +89,12 @@ ul{list-style:none;margin:0;padding:0}
 .cp:disabled{opacity:.45;cursor:default}
 .cp.ok{color:var(--buy);border-color:var(--buy)}
 .ul{font:inherit;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.15;height:22px;display:flex;align-items:center;gap:4px;color:var(--buy);background:none;border:0;padding:0;margin:0 0 3px;text-align:left;cursor:pointer;white-space:nowrap}
-.res{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
-.res>div{display:flex;flex-direction:column;justify-content:space-between;gap:4px;min-width:0;min-height:54px;padding:6px 8px 7px;border-radius:5px;background:color-mix(in srgb,var(--mute) 8%,transparent)}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:12px 8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.res>div{display:flex;flex-direction:column;justify-content:space-between;gap:4px;min-width:0;min-height:46px;padding:0}
 .res span{align-self:flex-start;font-size:clamp(.62rem,2.9vw,.7rem);line-height:1.2;color:var(--mute);white-space:nowrap}
-.res b{align-self:flex-end;max-width:100%;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.8rem,3.9vw,.95rem);font-weight:650;white-space:nowrap}
+.res b{margin-top:auto;align-self:flex-end;max-width:100%;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(.8rem,3.9vw,.95rem);font-weight:650;white-space:nowrap}
 .res .g.pos{--k:var(--buy)} .res .g.neu{--k:var(--even)} .res .g.neg{--k:var(--sell)}
-.res .g{background:color-mix(in srgb,var(--k,var(--mute)) 13%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--k,var(--mute)) 35%,transparent)}
-.res .g span{color:var(--k,var(--mute))}
-.res .g b{color:var(--k,var(--ink))}
+.res .g b{color:var(--k,var(--ink));font-size:clamp(1.1rem,6vw,1.6rem);line-height:1}
 </style>
 </head>
 <body>
@@ -128,7 +126,7 @@ ul{list-style:none;margin:0;padding:0}
           <div><span>Paga</span><b id="r-cli">—</b></div>
           <div><span>Recibe</span><b id="r-get">—</b></div>
           <div><span>Pago</span><b id="r-me">—</b></div>
-          <div class="g"><span>Saldo</span><b id="r-gan">—</b></div>
+          <div class="g"><span class="sr">Saldo</span><b id="r-gan">—</b></div>
         </div>
       </div>
     </div>
@@ -387,7 +385,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
     if (o.gan !== null) {
       const r = Math.round(o.gan);
       cell.classList.add(r > 0 ? "pos" : r < 0 ? "neg" : "neu");
-      g.textContent = (r > 0 ? "+ " : r < 0 ? "− " : "") + ars(Math.abs(r));
+      g.textContent = ars(Math.abs(r));
     } else g.textContent = "—";
     btnC.disabled = !(o.bob && o.cli);
     $("c-hint").textContent = !imp ? "Esperando la cotización implícita…"
