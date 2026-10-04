@@ -56,7 +56,7 @@ main{width:100%;padding:8px 8px 24px}
 ul{list-style:none;margin:0;padding:0}
 .o{font-size:.85rem}
 .o+.o{border-top:1px solid color-mix(in srgb,var(--c) 14%,var(--line))}
-.o:first-child{background:color-mix(in srgb,var(--c) 10%,transparent);box-shadow:inset 3px 0 0 var(--c)}
+.o.sel{background:color-mix(in srgb,var(--c) 10%,transparent);box-shadow:inset 3px 0 0 var(--c)}
 .o .pr{display:flex;align-items:flex-start;gap:3px;line-height:1}
 .o .pr b{color:var(--c);font-weight:650;font-size:1.15rem;letter-spacing:-.01em}
 .o>:nth-child(2),.o>:nth-child(3){font-size:.72rem;color:var(--ink)}
@@ -178,6 +178,8 @@ const API_BASE = window.location.hostname.endsWith("github.io") || window.locati
 const SYMBOL = { ARS: "ARS", BOB: "BOB" };
 const PAIRS = [["ARS", "BUY"], ["ARS", "SELL"], ["BOB", "BUY"], ["BOB", "SELL"]];
 const ROWS = 10;
+const want = {}; // cuántas órdenes pedir por celda (sube solo si ninguna alcanza para el monto)
+let selIdxFn = () => 0; // índice de la orden resaltada en el listado (lo define el segundo script)
 const state = {};
 let selected = null, loading = false, again = false;
 const cells = [...document.querySelectorAll(".c[data-key]")];
@@ -198,10 +200,10 @@ async function getAds(fiat, tradeType, rows) {
   }
 }
 
-function list(ads) {
+function list(ads, sel = 0) {
   if (!ads.length) return '<p class="msg">Sin órdenes disponibles.</p>';
   const ok = Number.isFinite;
-  return '<div class="oh"><span>Precio</span><span>Disponible</span><span>Límites</span></div><ul>' + ads.map((a) => {
+  return '<div class="oh"><span>Precio</span><span>Disponible</span><span>Límites</span></div><ul>' + ads.map((a, i) => {
     const meta = [
       ok(a.minQty) && ok(a.maxQty) && ["Límites USDT", fmt(a.minQty) + " – " + fmt(a.maxQty)],
     ].filter(Boolean).map(([k, v]) => `<span>${k} <strong>${esc(v)}</strong></span>`).join("");
@@ -210,7 +212,7 @@ function list(ads) {
       ok(a.positive) && fmt(a.positive * 100, 2) + "%",
     ].filter(Boolean).join(" · ");
     const reqs = [a.kyc === 1 && "KYC obligatorio", a.regDays > 0 && a.regDays + "+ días de registro"].filter(Boolean);
-    return `<li class="o"><div class="pr"><b>${fmt(a.price)}</b>${ok(a.payTime) ? `<small>${a.payTime} min</small>` : ""}</div><span>${fmt(a.available)} USDT</span><span>${fmt(a.min, 0)} – ${fmt(a.max, 0)}</span>` +
+    return `<li class="o${i === sel ? " sel" : ""}"><div class="pr"><b>${fmt(a.price)}</b>${ok(a.payTime) ? `<small>${a.payTime} min</small>` : ""}</div><span>${fmt(a.available)} USDT</span><span>${fmt(a.min, 0)} – ${fmt(a.max, 0)}</span>` +
       `<div class="who"><span class="nk">${esc(a.nick)}${a.merchant ? " ✓" : ""}</span>${tr ? `<span class="tr">${tr}</span>` : ""}</div>` +
       (meta ? `<div class="meta">${meta}</div>` : "") +
       (reqs.length ? `<div class="pay">Requisitos: ${esc(reqs.join(" · "))}</div>` : "") +
@@ -233,7 +235,7 @@ function showDetail() {
   $("panel").className = "panel open " + (t === "BUY" ? "buy" : "sell");
   place();
   $("dt").textContent = "USDT/" + fiat;
-  $("dl").innerHTML = state[selected] ? list(state[selected]) : '<p class="msg">Cargando…</p>';
+  $("dl").innerHTML = state[selected] ? list(state[selected], selIdxFn(selected)) : '<p class="msg">Cargando…</p>';
 }
 
 function paint(key) {
@@ -251,7 +253,7 @@ async function load(force) {
   $("status").textContent = "Actualizando…";
   const res = await Promise.allSettled(PAIRS.map(async ([fiat, t]) => {
     const key = fiat + "-" + t;
-    state[key] = await getAds(fiat, t, key === selected ? ROWS : 1); // solo trae más órdenes del precio abierto
+    state[key] = await getAds(fiat, t, want[key] || ROWS); // 10 órdenes; más solo si hace falta para cubrir el monto
     paint(key);
   })); // si una consulta falla, se conserva lo último mostrado
   const fail = res.find((r) => r.status === "rejected");
@@ -286,27 +288,97 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
   let imp = null; // cotización implícita vigente (BOB por ARS)
   let dir = "fwd"; // "fwd" = ARS → BOB · "inv" = BOB → ARS
 
-  const eff = (key) => override[key] || (state[key] && state[key][0] && state[key][0].price) || null;
+  const KEYS = ["ARS-BUY", "ARS-SELL", "BOB-BUY", "BOB-SELL"];
+  const LEVELS = [10, 20]; // Binance entrega como máximo 20 órdenes por consulta
+  const DOT = '<span style="font-size:.45em;opacity:.85"> ●</span>';
+  const pick = {};   // orden elegida por celda: índice en la lista (0 = la de mejor precio)
+  const hit = {};    // resultado de la búsqueda por celda: null = no aplica · -1 = ninguna sirve · i = índice hallado
+  let noFit = [], searching = false;
+  const legs = () => dir === "inv" ? ["BOB-BUY", "ARS-SELL"] : ["ARS-BUY", "BOB-SELL"]; // las dos patas de la operación
 
-  function renderCell(key) { // pinta la celda con el precio vigente (manual o mejor), con ● si es manual
+  // precio vigente de una celda: el fijado a mano, o el de la orden elegida
+  const eff = (key) => override[key] || (state[key] && state[key][pick[key] || 0] && state[key][pick[key] || 0].price) || null;
+
+  function renderCell(key) { // ● si el precio no es el de la primera orden (fijado a mano o elegido por alcanzar el monto)
     const v = eff(key);
     $("p-" + key).innerHTML = v
-      ? `<i>${SYMBOL[key.slice(0, 3)]}</i>${fmt(v)}${override[key] ? '<span style="font-size:.45em;opacity:.85"> ●</span>' : ""}`
+      ? `<i>${SYMBOL[key.slice(0, 3)]}</i>${fmt(v)}${override[key] || (pick[key] || 0) > 0 ? DOT : ""}`
       : "—";
   }
 
-  function update() { // ida: venta de USDT en BOB ÷ compra de USDT en ARS · vuelta: compra de USDT en BOB ÷ venta de USDT en ARS (siempre BOB por cada ARS)
+  const fin = Number.isFinite;
+  function fits(a, U) { // ¿la orden hace sola toda la operación de U USDT?
+    const fiat = U * a.price;
+    return (!fin(a.available) || a.available >= U)
+      && (!fin(a.min) || fiat >= a.min) && (!fin(a.max) || fiat <= a.max)
+      && (!fin(a.minQty) || U >= a.minQty) && (!fin(a.maxQty) || U <= a.maxQty);
+  }
+
+  function computeImp() { // ida: venta de USDT en BOB ÷ compra de USDT en ARS · vuelta: compra de USDT en BOB ÷ venta de USDT en ARS (siempre BOB por cada ARS)
     const inv = dir === "inv";
     const n = eff(inv ? "BOB-BUY" : "BOB-SELL"), d = eff(inv ? "ARS-SELL" : "ARS-BUY");
     imp = n && d ? n / d : null;
-    $("p-ARSBOB-BUY").innerHTML = imp ? `<i>BOB</i>${fmt6(imp)}` : "—";
-    calc();
   }
 
-  const _paint = paint; // respeta la selección manual y recalcula la implícita tras cada actualización
+  function reselect() { // busca, en cada pata, la primera orden que cubre el monto en una sola operación; devuelve true si cambió algo
+    const inv = dir === "inv", L = legs(), np = {}, o = model();
+    let U = null; // USDT que hay que mover
+    if (imp && o.bob && o.ars) {
+      const p = eff(inv ? "ARS-SELL" : "BOB-SELL");
+      U = p ? (inv ? o.ars : o.bob) / p : null;
+    }
+    noFit = []; searching = false;
+    KEYS.forEach((k) => {
+      np[k] = 0; hit[k] = null;
+      const ads = state[k];
+      if (!U || !ads || !L.includes(k) || override[k]) return;
+      const i = ads.findIndex((a) => fits(a, U));
+      hit[k] = i;
+      if (i >= 0) np[k] = i;
+      else if (ads.length) {
+        noFit.push(k);
+        const cur = want[k] || ROWS;
+        if (ads.length >= cur && cur < LEVELS[LEVELS.length - 1]) searching = true;
+      }
+    });
+    const changed = KEYS.some((k) => (pick[k] || 0) !== np[k]);
+    Object.assign(pick, np);
+    return changed;
+  }
+
+  function escalate() { // si ninguna de las órdenes cargadas alcanza, pide más; si alcanzó pronto, vuelve a pedir menos
+    const MAXL = LEVELS[LEVELS.length - 1], L = legs();
+    let up = false;
+    KEYS.forEach((k) => {
+      const cur = want[k] || ROWS, ads = state[k];
+      if (hit[k] !== null && hit[k] >= 0) want[k] = LEVELS.find((l) => l > hit[k]) || MAXL;
+      else if (hit[k] === -1 && ads && ads.length >= cur && cur < MAXL) { want[k] = LEVELS.find((l) => l > cur); up = true; }
+      else if (!L.includes(k)) want[k] = ROWS;
+    });
+    return up;
+  }
+  let escTimer;
+  function scheduleEscalate() { clearTimeout(escTimer); escTimer = setTimeout(() => { if (escalate()) load(true); }, 500); }
+
+  selIdxFn = (key) => { // orden resaltada en el listado: la fijada a mano o la elegida
+    const ads = state[key] || [];
+    return override[key] ? ads.findIndex((a) => a.price === override[key]) : (pick[key] || 0);
+  };
+
+  function update() {
+    computeImp();
+    for (let i = 0; i < 3 && reselect(); i++) computeImp(); // la elección cambia el precio y el precio puede cambiar la elección
+    KEYS.forEach(renderCell);
+    const dot = legs().some((k) => override[k] || (pick[k] || 0) > 0);
+    $("p-ARSBOB-BUY").innerHTML = imp ? `<i>BOB</i>${fmt6(imp)}${dot ? DOT : ""}` : "—";
+    calc();
+    if (selected) showDetail();
+    scheduleEscalate();
+  }
+
+  const _paint = paint; // al llegar datos nuevos recalcula la elección y la implícita
   paint = function (key) {
     _paint(key);
-    if (override[key]) renderCell(key);
     update();
   };
 
@@ -318,7 +390,6 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
     if (!ad) return;
     if (override[selected] === ad.price) delete override[selected];
     else override[selected] = ad.price;
-    renderCell(selected);
     update();
   });
 
@@ -407,7 +478,11 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
       g.innerHTML = (r > 0 ? "+ " : r < 0 ? "− " : "") + cur(o.payCur, Math.abs(r));
     } else g.textContent = "—";
     btnC.disabled = !(o.bob && o.ars);
+    const warn = noFit.length && !searching;
+    $("c-hint").style.color = warn ? "var(--even)" : "";
     $("c-hint").textContent = !imp ? "Esperando la cotización implícita…"
+      : noFit.length ? (searching ? "Buscando una orden que cubra este monto…"
+        : "Ninguna orden de " + [...new Set(noFit.map((k) => "USDT/" + k.slice(0, 3)))].join(" y ") + " cubre este monto en una sola operación")
       : mode === "offset" ? "Cotización = implícita " + (dir === "inv" ? "+" : "−") + " 0,0002, se actualiza sola"
       : mode === "pct" ? "Cotización calculada para ganar ese %, sigue a la implícita"
       : "Cotización fija, el % se recalcula";
@@ -450,12 +525,12 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) load
     const o = model();
     if (o.m > 0 && o.rate) elM.value = fmt(unit === "BOB" ? o.ars : o.bob, 0);
     unit = unit === "BOB" ? "ARS" : "BOB";
-    calc();
+    update();
   });
-  elM.addEventListener("input", calc);
-  elR.addEventListener("input", () => { mode = "rate"; rateV = num(elR.value); calc(); });
-  elP.addEventListener("input", () => { mode = "pct"; pctV = num(elP.value); calc(); });
-  $("c-reset").addEventListener("click", () => { mode = "offset"; if (document.activeElement) document.activeElement.blur(); calc(); });
+  elM.addEventListener("input", update);
+  elR.addEventListener("input", () => { mode = "rate"; rateV = num(elR.value); update(); });
+  elP.addEventListener("input", () => { mode = "pct"; pctV = num(elP.value); update(); });
+  $("c-reset").addEventListener("click", () => { mode = "offset"; if (document.activeElement) document.activeElement.blur(); update(); });
 
   // doble toque en la cotización implícita: invierte la dirección (ARS → BOB verde ⇄ BOB → ARS rojo)
   const impCell = $("imp-cell");
